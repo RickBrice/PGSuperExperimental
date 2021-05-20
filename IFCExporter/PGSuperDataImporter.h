@@ -20,13 +20,43 @@
 // Bridge_Support@wsdot.wa.gov
 ///////////////////////////////////////////////////////////////////////
 
+// PGSuperDataImporter.h : Declaration of the CPGSuperDataImporter
 
-// stdafx.cpp : source file that includes just the standard includes
-//  stdafx.pch will be the pre-compiled header
-//  stdafx.obj will contain the pre-compiled type information
+#pragma once
 
-#include "stdafx.h"
+#include <Plugins\PGSuperIEPlugin.h>
+#include "resource.h"       // main symbols
+#include "IfcAlignmentConverter.h"
 
-#ifdef _ATL_STATIC_REGISTRY
-#include <statreg.h>
-#endif
+
+/////////////////////////////////////////////////////////////////////////////
+// CPGSuperDataImporter
+class ATL_NO_VTABLE CPGSuperDataImporter : 
+	public CComObjectRootEx<CComSingleThreadModel>,
+	public CComCoClass<CPGSuperDataImporter, &CLSID_PGSuperDataImporter>,
+   public IPGSDataImporter
+{
+public:
+	CPGSuperDataImporter()
+	{
+	}
+
+DECLARE_REGISTRY_RESOURCEID(IDR_PGSUPERDATAIMPORTER)
+
+DECLARE_PROTECT_FINAL_CONSTRUCT()
+
+BEGIN_COM_MAP(CPGSuperDataImporter)
+	COM_INTERFACE_ENTRY(IPGSDataImporter)
+END_COM_MAP()
+
+// IPGSDataImporter
+public:
+   STDMETHOD(Init)(UINT nCmdID) override;
+   STDMETHOD(GetMenuText)(/*[out,retval]*/BSTR*  bstrText) const override;
+   STDMETHOD(GetBitmapHandle)(/*[out]*/HBITMAP* phBmp) const override;
+   STDMETHOD(GetCommandHintText)(BSTR*  bstrText) const override;
+   STDMETHOD(Import)(/*[in]*/IBroker* pBroker) override;
+
+private:
+   CIfcAlignmentConverter m_IfcConverter;
+};

@@ -20,13 +20,18 @@
 // Bridge_Support@wsdot.wa.gov
 ///////////////////////////////////////////////////////////////////////
 
+// PGSuperProjectImporter.h : Declaration of the CPGSuperProjectImporter
 
-// stdafx.cpp : source file that includes just the standard includes
-//  stdafx.pch will be the pre-compiled header
-//  stdafx.obj will contain the pre-compiled type information
+#pragma once
 
-#include "stdafx.h"
+// {14D0D78D-820D-4373-88A0-353ED4D86108}
+DEFINE_GUID(LIBID_IFCExtensions,
+   0x14d0d78d, 0x820d, 0x4373, 0x88, 0xa0, 0x35, 0x3e, 0xd4, 0xd8, 0x61, 0x8);
 
-#ifdef _ATL_STATIC_REGISTRY
-#include <statreg.h>
-#endif
+// {9A717887-EB12-470E-8A4F-C941F65E592B}
+DEFINE_GUID(CLSID_PGSuperDataImporter,
+   0x9a717887, 0xeb12, 0x470e, 0x8a, 0x4f, 0xc9, 0x41, 0xf6, 0x5e, 0x59, 0x2b);
+
+// {4E36E0A6-9EAE-452E-B91C-0099D065A764}
+DEFINE_GUID(CLSID_PGSuperDataExporter,
+   0x4e36e0a6, 0x9eae, 0x452e, 0xb9, 0x1c, 0x0, 0x99, 0xd0, 0x65, 0xa7, 0x64);
