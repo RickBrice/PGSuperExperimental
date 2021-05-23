@@ -29,6 +29,8 @@ public:
    //void ConvertToPGSuper(LX::LandXML* pLandXml, LX::Alignment* pAlignment, LX::ProfAlign* pProfAlign, LX::CrossSects* pCrossSects, LX::String& strSurfaceName, AlignmentData2* pAlignmentData, ProfileData2* pProfileData, RoadwaySectionData* pRoadwaySectionData);
    void ConvertToPGSuper(Ifc4x1::IfcAlignment* pAlignment, AlignmentData2* pAlignmentData, ProfileData2* pProfileData, RoadwaySectionData* pRoadwaySectionData);
 
+   void SetLengthUnit(const unitLength* pUnitLength) { m_pLengthUnit = pUnitLength; }
+
    Ifc4x1::IfcAlignment* GetAlignment(IfcParse::IfcFile& file);
 
    // Returns a list of notes that were generated during the LandXML to PGSuper conversion process
