@@ -1,14 +1,9 @@
 #include "stdafx.h"
 
-#include <MfcTools\Prompts.h>
-
 #include <IFace\Project.h>
 #include <IFace\VersionInfo.h>
 #include <IFace\Alignment.h>
 
-// This is defined as a compiler setting
-//#define USE_IFC4X1
-//#define USE_IFC4X3_RC2
 
 #include "IfcAlignmentConverter.h"
 #include "IfcAlignmentConverterException.h"
@@ -20,23 +15,19 @@
 #pragma comment(lib,"F:/IfcOpenShell/_build-vs2015-x64/Release/IfcParse.lib")
 #endif
 
-
-#if defined USE_IFC4X1
-IfcSchema::IfcAlignment2DHorizontal* BuildAlignment(IBroker* pBroker, IfcHierarchyHelper<IfcSchema>& file);
-IfcSchema::IfcAlignment2DVertical* BuildProfile(IBroker* pBroker, IfcHierarchyHelper<IfcSchema>& file);
-#elif defined USE_IFC4X3_RC2
-IfcSchema::IfcAlignmentHorizontal* BuildAlignment(IBroker* pBroker, IfcHierarchyHelper<IfcSchema>& file);
-IfcSchema::IfcAlignmentVertical* BuildProfile(IBroker* pBroker, IfcHierarchyHelper<IfcSchema>& file);
-#endif
-
-
 #define ALIGNMENT_NAME _T("Alignment1")
 
 // Constants for tracking the state of converting the profile data
 #define PROFILE_NOT_STARTED -1
 #define PROFILE_ESTABLISHED  1
 
-HRESULT SameLocation(IPoint2d* pnt1, IPoint2d* pnt2)
+// Use this throw macro when the data conversion cannot continue
+// The catcher, or other, is responsible for deleting it
+#define IFC_THROW(_s_) throw new CIfcAlignmentConverterException(_s_);
+
+Float64 CIfcAlignmentConverter::m_Precision = 0.001;
+
+HRESULT SameLocation(IPoint2d* pnt1, IPoint2d* pnt2,Float64 tolerance)
 {
    Float64 x1, y1, x2, y2;
    pnt1->get_X(&x1);
@@ -44,12 +35,416 @@ HRESULT SameLocation(IPoint2d* pnt1, IPoint2d* pnt2)
    pnt2->get_X(&x2);
    pnt2->get_Y(&y2);
 
-   return IsEqual(x1, x2) && IsEqual(y1, y2) ? S_OK : S_FALSE;
+   return IsEqual(x1, x2, tolerance) && IsEqual(y1, y2, tolerance) ? S_OK : S_FALSE;
 }
 
-// Use this throw macro when the data conversion cannot continue
-// The catcher, or other, is responsible for deleting it
-#define IFC_THROW(_s_) throw new CIfcAlignmentConverterException(_s_);
+template <typename Schema>
+typename Schema::IfcAlignment2DHorizontalSegment* CreateLineSegment(typename Schema::IfcCartesianPoint* pStartPoint, Float64 angle, Float64 length)
+{
+   return new Schema::IfcAlignment2DHorizontalSegment(boost::none, boost::none, boost::none, new Schema::IfcLineSegment2D(pStartPoint, angle, length));
+}
+
+template <typename Schema>
+typename Schema::IfcAlignmentHorizontalSegment* CreateLineSegment(typename Schema::IfcCartesianPoint* pStartPoint, Float64 angle, Float64 length)
+{
+   return new Schema::IfcAlignmentHorizontalSegment(boost::none, boost::none, pStartPoint, angle, 0.0, 0.0, length, boost::none, Schema::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_LINE);
+}
+
+template <typename Schema>
+typename Schema::IfcAlignment2DHorizontalSegment* CreateTransitionCurve(typename Schema::IfcCartesianPoint* pStartPoint, Float64 startDirection, Float64 Ls, Float64 R1, Float64 R2, bool bIsCCW1, bool bIsCCW2)
+{
+   return new Schema::IfcAlignment2DHorizontalSegment(boost::none, boost::none, boost::none, new Schema::IfcTransitionCurveSegment2D(pStartPoint, startDirection, Ls, IsZero(R1) ? boost::none : boost::optional<Float64>(R1), IsZero(R2) ? boost::none : boost::optional<Float64>(R2), bIsCCW1, bIsCCW2, Schema::IfcTransitionCurveType::IfcTransitionCurveType_CLOTHOIDCURVE));
+}
+
+template <typename Schema>
+typename Schema::IfcAlignmentHorizontalSegment* CreateTransitionCurve(typename Schema::IfcCartesianPoint* pStartPoint, Float64 startDirection, Float64 Ls, Float64 R1, Float64 R2, bool bIsCCW1, bool bIsCCW2)
+{
+   return new Schema::IfcAlignmentHorizontalSegment(boost::none, boost::none, pStartPoint, startDirection, (bIsCCW1 ? 1.0 : -1.0)*R1, (bIsCCW2 ? 1.0 : -1.0)*R2, Ls, boost::none, Schema::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CLOTHOID);
+}
+
+template <typename Schema>
+typename Schema::IfcAlignment2DHorizontalSegment* CreateCircularCurve(typename Schema::IfcCartesianPoint* pStartPoint, Float64 startDirection, Float64 Lc, Float64 R, bool bIsCCW)
+{
+   return new Schema::IfcAlignment2DHorizontalSegment(boost::none, boost::none, boost::none, new Schema::IfcCircularArcSegment2D(pStartPoint, startDirection, Lc, R, bIsCCW));
+}
+
+template <typename Schema>
+typename Schema::IfcAlignmentHorizontalSegment* CreateCircularCurve(typename Schema::IfcCartesianPoint* pStartPoint, Float64 startDirection, Float64 Lc, Float64 R, bool bIsCCW)
+{
+   return new Schema::IfcAlignmentHorizontalSegment(boost::none, boost::none, pStartPoint, startDirection, (bIsCCW ? 1.0 : -1.0)*R, (bIsCCW ? 1.0 : -1.0)*R, Lc, boost::none, Schema::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CIRCULARARC);
+}
+
+template <typename Schema>
+typename Schema::IfcAlignment2DHorizontal* CreateAlignment(std::string guid, typename Schema::IfcOwnerHistory* ownerHistory, typename Schema::IfcLocalPlacement* placement, typename Schema::IfcProductRepresentation* representation, Float64 startStation, boost::shared_ptr<IfcTemplatedEntityList<typename Schema::IfcAlignment2DHorizontalSegment>>& alignment_segments)
+{
+   return new Schema::IfcAlignment2DHorizontal(startStation, alignment_segments);
+}
+
+template <typename Schema>
+typename Schema::IfcAlignmentHorizontal* CreateAlignment(std::string  guid, typename Schema::IfcOwnerHistory* ownerHistory, typename Schema::IfcLocalPlacement* placement, typename Schema::IfcProductRepresentation* representation, Float64 startStation, boost::shared_ptr<IfcTemplatedEntityList<typename Schema::IfcAlignmentHorizontalSegment>>& alignment_segments)
+{
+   return new Schema::IfcAlignmentHorizontal(guid, ownerHistory, boost::none, boost::none, boost::none, placement, representation, startStation, alignment_segments);
+}
+
+template <typename Schema>
+typename boost::shared_ptr<IfcTemplatedEntityList<typename Schema::IfcAlignment2DHorizontalSegment>> CreateHorizontalSegments()
+{
+   return boost::shared_ptr<IfcTemplatedEntityList<typename Schema::IfcAlignment2DHorizontalSegment>>(new IfcTemplatedEntityList<typename Schema::IfcAlignment2DHorizontalSegment>());
+}
+
+template <typename Schema>
+typename boost::shared_ptr<IfcTemplatedEntityList<typename Schema::IfcAlignmentHorizontalSegment>> CreateHorizontalSegments()
+{
+   return boost::shared_ptr<IfcTemplatedEntityList<typename Schema::IfcAlignmentHorizontalSegment>>(new IfcTemplatedEntityList<typename Schema::IfcAlignmentHorizontalSegment>());
+}
+
+template <typename Schema,typename AlignmentType>
+typename AlignmentType* BuildAlignment(IBroker* pBroker, IfcHierarchyHelper<Schema>& file)
+{
+   auto alignment_segments = CreateHorizontalSegments<Schema>();
+
+   GET_IFACE2(pBroker, IGeometry, pGeometry);
+   GET_IFACE2(pBroker, IRoadway, pAlignment);
+   Float64 startStation, startElevation, startGrade;
+   CComPtr<IPoint2d> startPoint;
+   pAlignment->GetStartPoint(2, &startStation, &startElevation, &startGrade, &startPoint);
+
+   // create the start point
+   std::vector<Float64> vCoordinates;
+   vCoordinates.resize(2);
+   startPoint->Location(&vCoordinates[0], &vCoordinates[1]);
+   auto ifc_start_point = new Schema::IfcCartesianPoint(vCoordinates);
+
+   // loop over all the horizontal curves
+   CComPtr<IPoint2d> prevPoint = startPoint;
+   auto ifc_prev_point = ifc_start_point;
+   IndexType nHCurves = pAlignment->GetCurveCount();
+   for (IndexType i = 0; i < nHCurves; i++)
+   {
+      CComPtr<IHorzCurve> curve;
+      pAlignment->GetCurve(i, &curve);
+
+      CComPtr<IPoint2d> pntTS;
+      pAlignment->GetCurvePoint(i, cptTS, pgsTypes::pcGlobal, &pntTS);
+
+      // create a line segment from end of previous alignment segment to the start of this curve
+      if (SameLocation(pntTS,prevPoint, CIfcAlignmentConverter::GetPrecision()) == S_FALSE)
+      {
+         Float64 dist;
+         CComPtr<IDirection> direction;
+         pGeometry->Inverse(prevPoint, pntTS, &dist, &direction);
+         Float64 angle;
+         direction->get_Value(&angle);
+
+         auto ifc_line_segment = CreateLineSegment<Schema>(ifc_prev_point, angle, dist);
+         alignment_segments->push(ifc_line_segment);
+      }
+
+      // create this horizontal curve
+
+      std::array<Float64, 2> Lspiral;
+      curve->get_SpiralLength(spEntry, &Lspiral[spEntry]);
+      curve->get_SpiralLength(spExit, &Lspiral[spExit]);
+
+      Float64 Lc;
+      curve->get_CurveLength(&Lc);
+
+      Float64 R;
+      curve->get_Radius(&R);
+
+      ATLASSERT(0 < R); // need to deal with zero radius curves, which gives us an angle point in the alignment
+
+      CurveDirectionType curve_direction;
+      curve->get_Direction(&curve_direction);
+      bool bIsCCW = (curve_direction == cdLeft) ? true : false;
+
+      // curve starts at the Tangent to Spiral point (TS)
+      pntTS->Location(&vCoordinates[0], &vCoordinates[1]);
+      auto ifc_start = new Schema::IfcCartesianPoint(vCoordinates);
+
+      if (0.0 < Lspiral[spEntry])
+      {
+         // there is an entry spiral
+         CComPtr<IDirection> bkTangentBrg;
+         curve->get_BkTangentBrg(&bkTangentBrg);
+         Float64 bk_tangent_direction;
+         bkTangentBrg->get_Value(&bk_tangent_direction);
+
+         auto ifc_entry_spiral = CreateTransitionCurve<Schema>(ifc_start, bk_tangent_direction, Lspiral[spEntry], 0, R, bIsCCW, bIsCCW);
+         alignment_segments->push(ifc_entry_spiral);
+
+         // spiral ends at the Spiral to Curve point (CS)
+         CComPtr<IPoint2d> pntSC;
+         pAlignment->GetCurvePoint(i, cptSC, pgsTypes::pcGlobal, &pntSC);
+         pntSC->Location(&vCoordinates[0], &vCoordinates[1]);
+         ifc_start = new Schema::IfcCartesianPoint(vCoordinates);
+      }
+
+      // build the horizontal curve
+      CComPtr<IDirection> bkTangentBrgCurve;
+      curve->get_CurveBkTangentBrg(&bkTangentBrgCurve);
+      Float64 bk_tangent_direction_curve;
+      bkTangentBrgCurve->get_Value(&bk_tangent_direction_curve);
+      auto ifc_hcurve = CreateCircularCurve<Schema>(ifc_start, bk_tangent_direction_curve, Lc, R, bIsCCW);
+      alignment_segments->push(ifc_hcurve);
+
+      if (0.0 < Lspiral[spExit])
+      {
+         // there is an exit spiral
+
+         CComPtr<IDirection> fwdTangentBrgCurve;
+         curve->get_CurveFwdTangentBrg(&fwdTangentBrgCurve); // forward tangent of curve is start tangent to exit spiral
+         Float64 fwd_tangent_direction_curve;
+         fwdTangentBrgCurve->get_Value(&fwd_tangent_direction_curve);
+
+         // spiral starts at the Curve to Spiral point (CS)
+         CComPtr<IPoint2d> pntCS;
+         pAlignment->GetCurvePoint(i, cptCS, pgsTypes::pcGlobal, &pntCS);
+         pntCS->Location(&vCoordinates[0], &vCoordinates[1]);
+         ifc_start = new Schema::IfcCartesianPoint(vCoordinates);
+
+         auto ifc_exit_spiral = CreateTransitionCurve<Schema>(ifc_start, fwd_tangent_direction_curve, Lspiral[spExit], R, 0, bIsCCW, bIsCCW);
+         alignment_segments->push(ifc_exit_spiral);
+      }
+
+      // end of this curve (Spiral to Tangent, ST) becomes previous point for next alignment segment
+      prevPoint.Release();
+      pAlignment->GetCurvePoint(i, cptST, pgsTypes::pcGlobal, &prevPoint);
+      prevPoint->Location(&vCoordinates[0], &vCoordinates[1]);
+      ifc_prev_point = new Schema::IfcCartesianPoint(vCoordinates);
+   }
+
+   // build a linear segment from end of previous alignment segment to the end of the alignment
+   Float64 endStation, endElevation, endGrade;
+   CComPtr<IPoint2d> endPoint;
+   pAlignment->GetEndPoint(2, &endStation, &endElevation, &endGrade, &endPoint);
+
+   if (SameLocation(prevPoint,endPoint,CIfcAlignmentConverter::GetPrecision()) == S_FALSE)
+   {
+      // end the alignment with a line segment
+      Float64 dist;
+      CComPtr<IDirection> direction;
+      pGeometry->Inverse(prevPoint, endPoint, &dist, &direction);
+      Float64 angle;
+      direction->get_Value(&angle);
+
+      auto ifc_line_segment = CreateLineSegment<Schema>(ifc_start_point, angle, dist);
+      alignment_segments->push(ifc_line_segment);
+   }
+
+   // create a horizontal alignment from all the alignment segments
+   auto horizontal_alignment = CreateAlignment<Schema>(IfcParse::IfcGlobalId(), file.getSingle<Schema::IfcOwnerHistory>(), file.getSingle<Schema::IfcLocalPlacement>(), file.getSingle<Schema::IfcProductRepresentation>(), startStation, alignment_segments);
+
+   return horizontal_alignment;
+}
+
+template <typename Schema>
+typename Schema::IfcAlignment2DHorizontal* BuildAlignment(IBroker* pBroker, IfcHierarchyHelper<Schema>& file)
+{
+   return BuildAlignment<Schema, Schema::IfcAlignment2DHorizontal>(pBroker, file);
+}
+
+template <typename Schema>
+typename Schema::IfcAlignmentHorizontal* BuildAlignment(IBroker* pBroker, IfcHierarchyHelper<Schema>& file)
+{
+   return BuildAlignment<Schema, Schema::IfcAlignmentHorizontal>(pBroker, file);
+}
+
+template <typename Schema>
+void CreateLinearSegment(Float64 startDistAlong, Float64 L, Float64 startHeight, Float64 startGradient, typename Schema::IfcAlignment2DVerSegLine** ppSegment)
+{
+   *ppSegment = new Schema::IfcAlignment2DVerSegLine(boost::none, boost::none, boost::none, startDistAlong, L, startHeight, startGradient);
+}
+
+template <typename Schema>
+void CreateLinearSegment(Float64 startDistAlong, Float64 L, Float64 startHeight, Float64 startGradient, typename Schema::IfcAlignmentVerticalSegment** ppSegment)
+{
+   *ppSegment = new Schema::IfcAlignmentVerticalSegment(boost::none, boost::none, startDistAlong, L, startHeight, startGradient, startGradient, boost::none, Schema::IfcAlignmentVerticalSegmentTypeEnum::IfcAlignmentVerticalSegmentType_CONSTANTGRADIENT);
+}
+
+template <typename Schema>
+void CreateParabolicSegment(Float64 startDistAlong, Float64 L, Float64 startHeight, Float64 startGradient, Float64 endGradient, Float64 k, typename Schema::IfcAlignment2DVerSegParabolicArc** ppSegment)
+{
+   *ppSegment = new Schema::IfcAlignment2DVerSegParabolicArc(boost::none, boost::none, boost::none, startDistAlong, L, startHeight, startGradient, fabs(1 / k), ::BinarySign(k) < 0 ? true : false);
+}
+
+template <typename Schema>
+void CreateParabolicSegment(Float64 startDistAlong, Float64 L, Float64 startHeight, Float64 startGradient, Float64 endGradient, Float64 k, typename Schema::IfcAlignmentVerticalSegment** ppSegment)
+{
+   *ppSegment = new Schema::IfcAlignmentVerticalSegment(boost::none, boost::none, startDistAlong, L, startHeight, startGradient, endGradient, k, Schema::IfcAlignmentVerticalSegmentTypeEnum::IfcAlignmentVerticalSegmentType_PARABOLICARC);
+}
+
+template <typename Schema>
+typename Schema::IfcAlignment2DVertical* CreateProfile(std::string guid, typename Schema::IfcOwnerHistory* ownerHistory, typename Schema::IfcLocalPlacement* placement, typename Schema::IfcProductRepresentation* representation, boost::shared_ptr<IfcTemplatedEntityList<typename Schema::IfcAlignment2DVerticalSegment>>& profile_segments)
+{
+   return new Schema::IfcAlignment2DVertical(profile_segments);
+}
+
+
+template <typename Schema>
+typename Schema::IfcAlignmentVertical* CreateProfile(std::string guid, typename Schema::IfcOwnerHistory* ownerHistory, typename Schema::IfcLocalPlacement* placement, typename Schema::IfcProductRepresentation* representation, boost::shared_ptr<IfcTemplatedEntityList<typename Schema::IfcAlignmentVerticalSegment>>& profile_segments)
+{
+   return new Schema::IfcAlignmentVertical(guid, ownerHistory, boost::none, boost::none, boost::none, placement, representation, profile_segments);
+}
+
+template <typename Schema>
+typename boost::shared_ptr<IfcTemplatedEntityList<typename Schema::IfcAlignment2DVerticalSegment>> CreateProfileSegments()
+{
+   return boost::shared_ptr<IfcTemplatedEntityList<typename Schema::IfcAlignment2DVerticalSegment>>(new IfcTemplatedEntityList<typename Schema::IfcAlignment2DVerticalSegment>());
+}
+
+template <typename Schema>
+typename boost::shared_ptr<IfcTemplatedEntityList<typename Schema::IfcAlignmentVerticalSegment>> CreateProfileSegments()
+{
+   return boost::shared_ptr<IfcTemplatedEntityList<typename Schema::IfcAlignmentVerticalSegment>>(new IfcTemplatedEntityList<typename Schema::IfcAlignmentVerticalSegment>());
+}
+
+template <typename Schema,typename ProfileType,typename LinearSegment,typename ParabolicSegment>
+typename ProfileType* BuildProfile(IBroker* pBroker, IfcHierarchyHelper<Schema>& file)
+{
+   auto profile_segments = CreateProfileSegments<Schema>();
+
+   // Profile is defined by profile segments located at "distance from start" of the alignment and "length".
+   // We can't use stations to define the profile.
+   // Distance from start is taken to be Station - Start Station
+
+   GET_IFACE2(pBroker, IRoadway, pAlignment);
+
+   Float64 startStation, startElevation, startGrade;
+   CComPtr<IPoint2d> startPoint;
+   pAlignment->GetStartPoint(2, &startStation, &startElevation, &startGrade, &startPoint);
+
+   Float64 prev_end_dist_along = 0; // startStation; // this is distance along alignment, not station
+   Float64 prev_end_gradiant = startGrade;
+   Float64 prev_end_height = startElevation;
+
+   IndexType nVCurves = pAlignment->GetVertCurveCount();
+   for (IndexType i = 0; i < nVCurves; i++)
+   {
+      CComPtr<IVertCurve> curve;
+      pAlignment->GetVertCurve(i, &curve);
+
+      CComPtr<IProfilePoint> startPoint;
+      curve->get_BVC(&startPoint);
+      CComPtr<IStation> station;
+      startPoint->get_Station(&station);
+      Float64 start_height;
+      startPoint->get_Elevation(&start_height);
+      ZoneIndexType zoneIdx;
+      Float64 start_dist_along;
+      station->GetStation(&zoneIdx, &start_dist_along);
+      start_dist_along -= startStation;
+#pragma Reminder("WORKING HERE - How to deal with station equations?") // see IfcReferent
+
+      if (!IsEqual(prev_end_dist_along, start_dist_along))
+      {
+         // create a linear segment between the last profile element and this curve
+         Float64 length = start_dist_along - prev_end_dist_along;
+         LinearSegment* linear_segment;
+         CreateLinearSegment<Schema>(prev_end_dist_along, length, prev_end_height, prev_end_gradiant, &linear_segment);
+         profile_segments->push(linear_segment);
+      }
+
+      Float64 l1, l2;
+      curve->get_L1(&l1);
+      curve->get_L2(&l2);
+      if (!IsEqual(l1, l2) && !IsZero(l2))
+      {
+         // compound curve
+         CComPtr<IProfilePoint> pviPoint;
+         curve->get_PVI(&pviPoint);
+         CComPtr<IStation> pviStation;
+         pviPoint->get_Station(&pviStation);
+         Float64 pviElevation;
+         curve->Elevation(CComVariant(pviStation), &pviElevation);
+         Float64 pviGrade;
+         curve->Grade(CComVariant(pviStation), &pviGrade);
+
+         Float64 start_gradient, end_gradient;
+         curve->get_EntryGrade(&start_gradient);
+         curve->get_ExitGrade(&end_gradient);
+
+         Float64 k1, k2;
+         curve->get_K1(&k1);
+         curve->get_K2(&k2);
+
+         ParabolicSegment* parabolic_segment1;
+         CreateParabolicSegment<Schema>(start_dist_along, l1, start_height, start_gradient, pviGrade, k1, &parabolic_segment1);
+         profile_segments->push(parabolic_segment1);
+
+         ParabolicSegment* parabolic_segment2;
+         CreateParabolicSegment<Schema>(start_dist_along + l1, l2, pviElevation, pviGrade, end_gradient, k2, &parabolic_segment2);
+         profile_segments->push(parabolic_segment2);
+      }
+      else
+      {
+         Float64 horizontal_length;
+         curve->get_Length(&horizontal_length);
+         Float64 start_gradient, end_gradient;
+         curve->get_EntryGrade(&start_gradient);
+         curve->get_ExitGrade(&end_gradient);
+
+         if (IsEqual(start_gradient, end_gradient))
+         {
+            // this is just a straight line
+            LinearSegment* linear_segment;
+            CreateLinearSegment<Schema>(prev_end_dist_along, l1, prev_end_height, start_gradient, &linear_segment);
+            profile_segments->push(linear_segment);
+         }
+         else
+         {
+            Float64 k;
+            curve->get_K1(&k);
+            ParabolicSegment* parabolic_segment;
+            CreateParabolicSegment<Schema>(start_dist_along, horizontal_length, start_height, start_gradient, end_gradient, k, &parabolic_segment);
+            profile_segments->push(parabolic_segment);
+         }
+      }
+
+      // setup parameters for next loop
+      CComPtr<IProfilePoint> evc;
+      curve->get_EVC(&evc);
+      CComPtr<IStation> evcStation;
+      evc->get_Station(&evcStation);
+      evcStation->GetStation(&zoneIdx, &prev_end_dist_along);
+      prev_end_dist_along -= startStation;
+      evc->get_Elevation(&prev_end_height);
+      curve->get_ExitGrade(&prev_end_gradiant);
+#pragma Reminder("WORKING HERE - How to deal with station equations?") // see IfcReferent
+   }
+
+   Float64 endStation, endElevation, endGrade;
+   CComPtr<IPoint2d> endPoint;
+   pAlignment->GetEndPoint(2, &endStation, &endElevation, &endGrade, &endPoint);
+   if (!IsEqual(prev_end_dist_along, endStation))
+   {
+      // create a linear segment between the last profile element and the end of the alignment
+      ATLASSERT(IsEqual(prev_end_gradiant, endGrade));
+      Float64 length = endStation - startStation - prev_end_dist_along;
+      LinearSegment* linear_segment;
+      CreateLinearSegment<Schema>(prev_end_dist_along, length, prev_end_height, prev_end_gradiant, &linear_segment);
+      profile_segments->push(linear_segment);
+
+      // check elevation
+      ATLASSERT(IsEqual(endElevation, prev_end_height + length*prev_end_gradiant));
+   }
+
+   auto vertical_profile = CreateProfile<Schema>(IfcParse::IfcGlobalId(), file.getSingle<Schema::IfcOwnerHistory>(), file.getSingle<Schema::IfcLocalPlacement>(), file.getSingle<Schema::IfcProductRepresentation>(), profile_segments);
+
+   return vertical_profile;
+}
+
+template <typename Schema>
+typename Schema::IfcAlignment2DVertical* BuildProfile(IBroker* pBroker, IfcHierarchyHelper<Schema>& file)
+{
+   return BuildProfile<Schema, Schema::IfcAlignment2DVertical, Schema::IfcAlignment2DVerSegLine,Schema::IfcAlignment2DVerSegParabolicArc>(pBroker, file);
+}
+
+template <typename Schema>
+typename Schema::IfcAlignmentVertical* BuildProfile(IBroker* pBroker, IfcHierarchyHelper<Schema>& file)
+{
+   return BuildProfile<Schema, Schema::IfcAlignmentVertical, Schema::IfcAlignmentVerticalSegment,Schema::IfcAlignmentVerticalSegment>(pBroker, file);
+}
 
 CIfcAlignmentConverter::CIfcAlignmentConverter(void)
 {
@@ -68,28 +463,125 @@ CIfcAlignmentConverter::~CIfcAlignmentConverter(void)
 {
 }
 
+template <typename Schema>
+void CIfcAlignmentConverter::InitUnits(IfcParse::IfcFile& file)
+{
+   auto geometric_representation_contexts = file.instances_by_type<Schema::IfcGeometricRepresentationContext>();
+   ATLASSERT(geometric_representation_contexts->size() == 1);// From my understanding there should only be the one
+   auto geometric_representation_context = *(geometric_representation_contexts->begin());
+   if (geometric_representation_context->hasPrecision())
+   {
+      m_Precision = geometric_representation_context->Precision();
+   }
+
+
+#pragma Reminder("WORKING HERE - UNITS - THERE ARE MANY CASES THIS DOESN'T DEAL WITH")
+   auto unit_assignment_instances = file.instances_by_type<Schema::IfcUnitAssignment>();
+   ATLASSERT(unit_assignment_instances->size() == 1);
+   auto unit_assignment = *(unit_assignment_instances->begin());
+   auto units = unit_assignment->Units();
+   for (auto unit : *units)
+   {
+      auto derived_unit = unit->as<Schema::IfcDerivedUnit>();
+      auto monitary_unit = unit->as<Schema::IfcMonetaryUnit>();
+      auto si_unit = unit->as<Schema::IfcSIUnit>();
+      auto conversion_based_unit = unit->as<Schema::IfcConversionBasedUnit>();
+      auto conversion_based_unit_with_offset = unit->as<Schema::IfcConversionBasedUnitWithOffset>();
+
+      if (si_unit && si_unit->Name() == Schema::IfcSIUnitName::IfcSIUnitName_METRE)
+      {
+         if (si_unit->hasPrefix())
+         {
+            switch (si_unit->Prefix())
+            {
+            case Schema::IfcSIPrefix::IfcSIPrefix_KILO:
+               m_pLengthUnit = &unitMeasure::Kilometer;
+               break;
+
+            case Schema::IfcSIPrefix::IfcSIPrefix_CENTI:
+               m_pLengthUnit = &unitMeasure::Centimeter;
+               break;
+
+            case Schema::IfcSIPrefix::IfcSIPrefix_MILLI:
+               m_pLengthUnit = &unitMeasure::Millimeter;
+               break;
+
+            default:
+               ATLASSERT(false); // unit prefix isn't supported
+            }
+         }
+         else
+         {
+            m_pLengthUnit = &unitMeasure::Meter;
+         }
+         break;
+      }
+
+      if (conversion_based_unit && conversion_based_unit->UnitType() == Schema::IfcUnitEnum::IfcUnit_LENGTHUNIT)
+      {
+         if (conversion_based_unit->UnitType() == Schema::IfcUnitEnum::IfcUnit_LENGTHUNIT)
+         {
+            auto measure_with_unit = conversion_based_unit->ConversionFactor();
+            auto unit_component = measure_with_unit->UnitComponent()->as<Schema::IfcSIUnit>();
+            ATLASSERT(unit_component->Name() == Schema::IfcSIUnitName::IfcSIUnitName_METRE);
+            ATLASSERT(unit_component->hasPrefix() == false); // not dealing with conversion factors to anything but meter
+            auto value_component = measure_with_unit->ValueComponent()->as<Schema::IfcReal>();
+            ATLASSERT(value_component); // not dealing with anything but simple conversion factors
+            if (IsEqual((Float64)(*value_component), unitMeasure::Feet.GetConvFactor()))
+            {
+               m_pLengthUnit = &unitMeasure::Feet;
+            }
+            else if (IsEqual((Float64)(*value_component), unitMeasure::Inch.GetConvFactor()))
+            {
+               m_pLengthUnit = &unitMeasure::Inch;
+            }
+            else if (IsEqual((Float64)(*value_component), unitMeasure::Mile.GetConvFactor()))
+            {
+               m_pLengthUnit = &unitMeasure::Mile;
+            }
+
+         }
+         break;
+      }
+   }
+}
+
+void CIfcAlignmentConverter::ConvertToIfc(IBroker* pBroker, const CString& strFilePath, CIfcAlignmentConverter::SchemaType schemaType)
+{
+   switch (schemaType)
+   {
+   case Schema_4x1: ConvertToIfc<Ifc4x1>(pBroker, strFilePath); break;
+   case Schema_4x2: ConvertToIfc<Ifc4x2>(pBroker, strFilePath); break;
+   case Schema_4x3_rc1: ConvertToIfc<Ifc4x3_rc1>(pBroker, strFilePath); break;
+   case Schema_4x3_rc2: ConvertToIfc<Ifc4x3_rc2>(pBroker, strFilePath); break;
+   default:
+      ATLASSERT(false); // is there a new schema type
+   }
+}
+
+
+template <typename Schema>
 void CIfcAlignmentConverter::ConvertToIfc(IBroker* pBroker, const CString& strFilePath)
 {
    USES_CONVERSION;
 
-   IfcHierarchyHelper<IfcSchema> file;
-//   file.header().file_name().name(T2A(dlg.GetFileName().GetBuffer()));
+   IfcHierarchyHelper<Schema> file;
    file.header().file_name().name(T2A(strFilePath));
 
    //auto project = file.addProject(); // Don't like the default units in IfcOpenShell so we have do build our own
    /////////////////////////// The following is copied from addProject and tweeked
    IfcEntityList::ptr units(new IfcEntityList);
-   IfcSchema::IfcDimensionalExponents* dimexp = new IfcSchema::IfcDimensionalExponents(0, 0, 0, 0, 0, 0, 0);
-   IfcSchema::IfcSIUnit* unit1 = new IfcSchema::IfcSIUnit(IfcSchema::IfcUnitEnum::IfcUnit_LENGTHUNIT, boost::none, IfcSchema::IfcSIUnitName::IfcSIUnitName_METRE);
-   IfcSchema::IfcSIUnit* unit2 = new IfcSchema::IfcSIUnit(IfcSchema::IfcUnitEnum::IfcUnit_PLANEANGLEUNIT, boost::none, IfcSchema::IfcSIUnitName::IfcSIUnitName_RADIAN);
+   Schema::IfcDimensionalExponents* dimexp = new Schema::IfcDimensionalExponents(0, 0, 0, 0, 0, 0, 0);
+   Schema::IfcSIUnit* unit1 = new Schema::IfcSIUnit(Schema::IfcUnitEnum::IfcUnit_LENGTHUNIT, boost::none, Schema::IfcSIUnitName::IfcSIUnitName_METRE);
+   Schema::IfcSIUnit* unit2 = new Schema::IfcSIUnit(Schema::IfcUnitEnum::IfcUnit_PLANEANGLEUNIT, boost::none, Schema::IfcSIUnitName::IfcSIUnitName_RADIAN);
 
    units->push(unit1);
    units->push(unit2);
 
-   IfcSchema::IfcUnitAssignment* unit_assignment = new IfcSchema::IfcUnitAssignment(units);
+   Schema::IfcUnitAssignment* unit_assignment = new Schema::IfcUnitAssignment(units);
 
-   IfcSchema::IfcRepresentationContext::list::ptr rep_contexts(new IfcSchema::IfcRepresentationContext::list);
-   IfcSchema::IfcProject* project = new IfcSchema::IfcProject(IfcParse::IfcGlobalId(), nullptr, boost::none, boost::none, boost::none, boost::none, boost::none, rep_contexts, unit_assignment);
+   Schema::IfcRepresentationContext::list::ptr rep_contexts(new Schema::IfcRepresentationContext::list);
+   Schema::IfcProject* project = new Schema::IfcProject(IfcParse::IfcGlobalId(), nullptr, boost::none, boost::none, boost::none, boost::none, boost::none, rep_contexts, unit_assignment);
 
    file.addEntity(dimexp);
    file.addEntity(unit1);
@@ -104,7 +596,7 @@ void CIfcAlignmentConverter::ConvertToIfc(IBroker* pBroker, const CString& strFi
    project->setName(T2A(pProjectProperties->GetBridgeName()));
    site->setName(T2A(pProjectProperties->GetBridgeName()));
 
-   auto owner_history = file.getSingle<IfcSchema::IfcOwnerHistory>();
+   auto owner_history = file.getSingle<Schema::IfcOwnerHistory>();
    GET_IFACE2(pBroker, IVersionInfo, pVersionInfo);
    owner_history->OwningApplication()->setApplicationFullName("BridgeLink::PGSuper");
    owner_history->OwningApplication()->setApplicationIdentifier("PGSuper");
@@ -114,33 +606,30 @@ void CIfcAlignmentConverter::ConvertToIfc(IBroker* pBroker, const CString& strFi
 
    auto local_placement = file.addLocalPlacement();
 
-   auto geometric_representation_context = new IfcSchema::IfcGeometricRepresentationContext(boost::none, boost::none, 3, boost::none, local_placement, nullptr);
+   auto geometric_representation_context = new Schema::IfcGeometricRepresentationContext(boost::none, boost::none, 3, boost::none, local_placement, nullptr);
    file.addEntity(geometric_representation_context); // ADD THE CONTEXT TO THE FILE!!!!
    auto contexts = project->RepresentationContexts(); // get the old context
    contexts->push(geometric_representation_context); // add the new context
    project->setRepresentationContexts(contexts); // set the context back into the project
 
-   auto horizontal_alignment = BuildAlignment(pBroker, file);
-   auto vertical_profile = BuildProfile(pBroker, file);
+   auto horizontal_alignment = BuildAlignment<Schema>(pBroker, file);
+   auto vertical_profile = BuildProfile<Schema>(pBroker, file);
 
    //////////////////////////////////////////////////////////////////////////////////
 
    // create an alignment curve in 3D using the horizontal alignment and vertical profile (nullptr for profile since it's optional)
    // we could also use an IfcOffsetCurveByDistances or an IfcPolyline to define the reference system curve
-#if defined USE_IFC4X3_RC2
-#pragma Reminder("WORKING HERE - IfcAlignmentCurve is marked as depreciated so what is the alternative?")
-#endif
-   auto axis = new IfcSchema::IfcAlignmentCurve(horizontal_alignment, vertical_profile, boost::none);
+#pragma Reminder("WORKING HERE - IfcAlignmentCurve is marked as depreciated in 4x3rc2 so what is the alternative?")
+   auto axis = new Schema::IfcAlignmentCurve(horizontal_alignment, vertical_profile, boost::none);
 
    // create an alignment... this is the linear positioning element. it could be an alignment curve (as used above) or IfcOffsetCurveByDistances or IfcPolyline
-   auto alignment = new IfcSchema::IfcAlignment(IfcParse::IfcGlobalId(), owner_history, std::string("Alignment"), boost::none,
-      boost::none /*object type*/, local_placement /*object placement*/, file.getSingle<IfcSchema::IfcProductRepresentation>()/*representation*/, axis, boost::none /*IfcSchema::IfcAlignmentTypeEnum::IfcAlignmentType_USERDEFINED*/);
+   auto alignment = new Schema::IfcAlignment(IfcParse::IfcGlobalId(), owner_history, std::string("Alignment"), boost::none, boost::none, local_placement, file.getSingle<Schema::IfcProductRepresentation>(), axis, boost::none);
    file.addEntity(alignment);
 
-   boost::shared_ptr<IfcTemplatedEntityList<IfcSchema::IfcProduct>> related_elements(new IfcTemplatedEntityList<IfcSchema::IfcProduct>());
+   boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcProduct>> related_elements(new IfcTemplatedEntityList<Schema::IfcProduct>());
    related_elements->push(alignment);
 
-   auto spatial_structure = new IfcSchema::IfcRelContainedInSpatialStructure(IfcParse::IfcGlobalId(), owner_history, boost::none, boost::none, related_elements, site);
+   auto spatial_structure = new Schema::IfcRelContainedInSpatialStructure(IfcParse::IfcGlobalId(), owner_history, boost::none, boost::none, related_elements, site);
    file.addEntity(spatial_structure);
 
    site->ContainsElements()->push(spatial_structure);
@@ -149,673 +638,6 @@ void CIfcAlignmentConverter::ConvertToIfc(IBroker* pBroker, const CString& strFi
    ofs << file;
 }
 
-
-//void CIfcAlignmentConverter::ConvertToLandXML(IBroker* pBroker, LX::Document* pDocument)
-//{
-//   LX::IFactory* pFactory = pDocument->getFactory();
-//
-//   // Create LandXML node and set its attributes.
-//   LX::LandXML* pLandXml = pFactory->createLandXML();
-//   pLandXml->setLanguage(_T("English"));
-//   pLandXml->setVersion(_T("1.2")); // LandXML version
-//
-//   CTime now = CTime::GetCurrentTime();
-//   CString strTime = now.Format(_T("%H:%M:%S"));
-//   CString strDate = now.Format(_T("%Y-%m-%d"));
-//
-//   pLandXml->setTime(strTime.GetBuffer());
-//   pLandXml->setDate(strDate.GetBuffer());
-//
-//
-//   LX::Application* pApplication = pFactory->createApplication();
-//   pApplication->setName(_T("PGSuper Extension Pack"));
-//   pApplication->setManufacturer(_T("BridgeSight Software"));
-//   pApplication->setManufacturerURL(_T("http://www.bridgesight.com"));
-//
-//
-//   GET_IFACE2(pBroker, IProjectProperties, pProjectProperties);
-//   LX::Author* pAuthor = pFactory->createAuthor();
-//   pAuthor->setCompany(pProjectProperties->GetCompany());
-//   pAuthor->setCreatedBy(pProjectProperties->GetEngineer());
-//   pApplication->Author().addItem(pAuthor);
-//
-//   pLandXml->setApplication(pApplication);
-//
-//   // Create Project tag.
-//   LX::Project* pProject = pFactory->createProject();
-//   LX::String strName(pProjectProperties->GetBridgeName());
-//   pProject->setName(strName);
-//   pLandXml->setProject(pProject);
-//
-//   // Create Units tag
-//   LX::Units* pUnits = pFactory->createUnits();
-//
-//   // Use Imperial Units
-//   LX::Imperial* pImperial = pFactory->createImperial();
-//
-//   pImperial->setAngularUnit(LX::EnumAngularType::Values::k_decimal_degrees);
-//   pImperial->setAreaUnit(LX::EnumImpArea::Values::k_squareFoot);
-//   pImperial->setDiameterUnit(LX::EnumImpDiameter::Values::k_foot);
-//   pImperial->setDirectionUnit(LX::EnumAngularType::Values::k_decimal_degrees);
-//   pImperial->setHeightUnit(LX::EnumImpHeight::Values::k_foot);
-//   pImperial->setLinearUnit(LX::EnumImpLinear::Values::k_foot);
-//   pImperial->setVolumeUnit(LX::EnumImpVolume::Values::k_cubicYard);
-//   pImperial->setTemperatureUnit(LX::EnumImpTemperature::k_fahrenheit);
-//   pImperial->setPressureUnit(LX::EnumImpPressure::k_inHG);
-//
-//   // Set the Imperial units in the Units object.
-//   pUnits->setSelectedUnits(pImperial);
-//   pLandXml->setUnits(pUnits);
-//
-//   // Create Alignments
-//   LX::Alignments* pAlignments = pFactory->createAlignments();
-//   LX::Alignment*  pAlignment = CreateAlignment(pBroker, pFactory);
-//   LX::Profile*    pProfile = CreateProfile(pBroker, pFactory);
-//   //LX::CrossSects* pCrossSects = CreateCrossSections(pBroker,pFactory);
-//   pAlignment->Profile().addItem(pProfile);
-//   //pAlignment->CrossSects().addItem(pCrossSects);
-//   pAlignments->Alignment().addItem(pAlignment);
-//   pLandXml->Alignments().addItem(pAlignments);
-//
-//   LX::Roadways* pRoadways = pFactory->createRoadways();
-//   LX::Roadway*  pRoadway = CreateRoadway(pBroker, pFactory);
-//   pRoadways->Roadway().addItem(pRoadway);
-//   pLandXml->Roadways().addItem(pRoadways);
-//
-//   // Set the root node of the document.
-//   pDocument->setRootObject(pLandXml);
-//}
-//
-//LX::Alignment* CIfcAlignmentConverter::CreateAlignment(IBroker* pBroker, LX::IFactory* pFactory)
-//{
-//   LX::Alignment*  pAlignment = pFactory->createAlignment();
-//   pAlignment->setName(ALIGNMENT_NAME);
-//   pAlignment->setDesc(_T("Alignment exported from PGSuper"));
-//
-//   // create geometry of the alignment
-//   LX::CoordGeom* pCoordGeom = pFactory->createCoordGeom();
-//   pCoordGeom->setName(pAlignment->getName());
-//   pAlignment->setCoordGeom(pCoordGeom); // attach them together
-//
-//
-//   GET_IFACE2(pBroker, IBridge, pBridge);
-//   PierIndexType nPiers = pBridge->GetPierCount();
-//   SpanIndexType nSpans = pBridge->GetSpanCount();
-//
-//   Float64 first_pier_station = pBridge->GetPierStation(0);
-//   Float64 last_pier_station = pBridge->GetPierStation(nPiers - 1);
-//
-//   Float64 first_span_length = pBridge->GetPierStation(1) - pBridge->GetPierStation(0);
-//   Float64 last_span_length = pBridge->GetPierStation(nPiers - 1) - pBridge->GetPierStation(nPiers - 2);
-//
-//
-//   // figure out parameters for the alignment
-//   GET_IFACE2(pBroker, IRoadway, pPGSuperAlignment);
-//   GET_IFACE2(pBroker, IRoadwayData, pRoadwayData);
-//
-//   const AlignmentData2& alignmentData = pRoadwayData->GetAlignmentData2();
-//
-//   // get beginning of alignment station and coordinate
-//   Float64 TS_station = first_pier_station - first_span_length / 2;
-//   Float64 ST_station = last_pier_station + last_span_length / 2;
-//
-//   if (alignmentData.HorzCurves.size() != 0)
-//   {
-//      // alignment has curves
-//      HorzCurveData hcData = alignmentData.HorzCurves.front();
-//      if (!IsZero(hcData.Radius))
-//      {
-//         // alignment starts and ends with a real horizontal curve... get the TS and ST stations
-//
-//         CComPtr<IHorzCurve> first_curve;
-//         pPGSuperAlignment->GetCurve(0, &first_curve);
-//         Float64 tangent;
-//         first_curve->get_Tangent(&tangent);
-//         TS_station = hcData.PIStation - tangent;
-//      }
-//
-//      hcData = alignmentData.HorzCurves.back();
-//      if (!IsZero(hcData.Radius))
-//      {
-//         CComPtr<IHorzCurve> last_curve;
-//         pPGSuperAlignment->GetCurve(alignmentData.HorzCurves.size() - 1, &last_curve);
-//         Float64 tangent;
-//         last_curve->get_Tangent(&tangent);
-//         Float64 length;
-//         last_curve->get_TotalLength(&length);
-//         ST_station = hcData.PIStation - tangent + length;
-//      }
-//   }
-//
-//   Float64 start_station = Min(alignmentData.RefStation, first_pier_station - first_span_length / 2, TS_station);
-//   Float64 start_x, start_y;
-//
-//   CComPtr<IPoint2d> pntStart;
-//   pPGSuperAlignment->GetPoint(start_station, 0.0, nullptr, pgsTypes::pcGlobal, &pntStart);
-//   pntStart->get_X(&start_x);
-//   pntStart->get_Y(&start_y);
-//
-//   Float64 end_station = Max(last_pier_station + last_span_length / 2, ST_station);
-//   Float64 end_x, end_y;
-//   CComPtr<IPoint2d> pntEnd;
-//   pPGSuperAlignment->GetPoint(end_station, 0.0, nullptr, pgsTypes::pcGlobal, &pntEnd);
-//   pntEnd->get_X(&end_x);
-//   pntEnd->get_Y(&end_y);
-//
-//   start_x = ::ConvertFromSysUnits(start_x, unitMeasure::Feet);
-//   start_y = ::ConvertFromSysUnits(start_y, unitMeasure::Feet);
-//   end_x = ::ConvertFromSysUnits(end_x, unitMeasure::Feet);
-//   end_y = ::ConvertFromSysUnits(end_y, unitMeasure::Feet);
-//
-//   // lay out alignment.... start point to end point if no curves
-//   // else start point, line to first ST, CURVE, line from TS to ST, Curve, etc... finish with line from ST to end
-//   // Check for zero length lines and skip them
-//   pAlignment->setStaStart(::ConvertFromSysUnits(start_station, unitMeasure::Feet));
-//   pAlignment->setLength(::ConvertFromSysUnits(end_station - start_station, unitMeasure::Feet));
-//   if (alignmentData.HorzCurves.size() == 0)
-//   {
-//      // Use a straight line to represent the alignment
-//
-//      // Create line.
-//      LX::Line* pLine = pFactory->createLine();
-//      LX::Start* pStart = nullptr;
-//      LX::End*   pEnd = nullptr;
-//
-//      pStart = pFactory->createStart();
-//      pStart->addItem(start_y); // northing
-//      pStart->addItem(start_x); // easting
-//
-//      pEnd = pFactory->createEnd();
-//      pEnd->addItem(end_y); // northing
-//      pEnd->addItem(end_x); // easting
-//
-//      pLine->setStart(pStart);
-//      pLine->setEnd(pEnd);
-//
-//      pCoordGeom->GeomList().addItem(pLine);
-//   }
-//   else
-//   {
-//      // use a series of lines and curves to represent the alignment
-//      Float64 prev_x = start_x;
-//      Float64 prev_y = start_y;
-//      auto begin = std::cbegin(alignmentData.HorzCurves);
-//      auto iter = begin;
-//      auto end = std::cend(alignmentData.HorzCurves);
-//      for (; iter != end; iter++)
-//      {
-//         const auto& hcData = *iter;
-//         if (IsZero(hcData.Radius))
-//         {
-//            CComPtr<IPoint2d> pntPI;
-//            pPGSuperAlignment->GetPoint(hcData.PIStation, 0.00, nullptr, pgsTypes::pcGlobal, &pntPI);
-//
-//            LX::Start* pStart = nullptr;
-//            LX::POI*   pPI = nullptr;
-//            LX::End*   pEnd = nullptr;
-//            if (iter == begin)
-//            {
-//               // need a point on back tangent
-//               ATLASSERT(start_station < hcData.PIStation);
-//               CComPtr<IPoint2d> pntPBT;
-//               pPGSuperAlignment->GetPoint(start_station, 0.00, nullptr, pgsTypes::pcGlobal, &pntPBT);
-//               Float64 x, y;
-//               pntPBT->get_X(&x);
-//               pntPBT->get_Y(&y);
-//               x = ::ConvertFromSysUnits(x, unitMeasure::Feet);
-//               y = ::ConvertFromSysUnits(y, unitMeasure::Feet);
-//               prev_x = x;
-//               prev_y = y;
-//               pStart = pFactory->createStart();
-//               pStart->addItem(y);
-//               pStart->addItem(x);
-//            }
-//
-//            // PI point
-//            pPI = pFactory->createPOI();
-//            Float64 x, y;
-//            pntPI->get_X(&x);
-//            pntPI->get_Y(&y);
-//            x = ::ConvertFromSysUnits(x, unitMeasure::Feet);
-//            y = ::ConvertFromSysUnits(y, unitMeasure::Feet);
-//            prev_x = x;
-//            prev_y = y;
-//            pPI->addItem(y); // Northing
-//            pPI->addItem(x); // Easting
-//
-//            if (iter == alignmentData.HorzCurves.end() - 1)
-//            {
-//               // need a point on forward tangent
-//               ATLASSERT(hcData.PIStation < end_station);
-//               CComPtr<IPoint2d> pntPFT;
-//               pPGSuperAlignment->GetPoint(end_station, 0.00, nullptr, pgsTypes::pcGlobal, &pntPFT);
-//               Float64 x, y;
-//               pntPFT->get_X(&x);
-//               pntPFT->get_Y(&y);
-//               x = ::ConvertFromSysUnits(x, unitMeasure::Feet);
-//               y = ::ConvertFromSysUnits(y, unitMeasure::Feet);
-//               prev_x = x;
-//               prev_y = y;
-//               pEnd = pFactory->createEnd();
-//               pEnd->addItem(y);
-//               pEnd->addItem(x);
-//            }
-//
-//            if (pStart == nullptr && pEnd == nullptr)
-//            {
-//               pCoordGeom->GeomList().addItem(pPI);
-//            }
-//
-//            if (pStart)
-//            {
-//               LX::Line* pLine = pFactory->createLine();
-//               pLine->setStart(pStart);
-//
-//               LX::End* pPIEnd = pFactory->createEnd();
-//               pPIEnd->addItem(pPI->at(0));
-//               pPIEnd->addItem(pPI->at(1));
-//               pLine->setEnd(pPIEnd);
-//
-//               pCoordGeom->GeomList().addItem(pLine);
-//            }
-//
-//            if (pEnd)
-//            {
-//               LX::Line* pLine = pFactory->createLine();
-//
-//               LX::Start* pPIStart = pFactory->createStart();
-//               pPIStart->addItem(pPI->at(0));
-//               pPIStart->addItem(pPI->at(1));
-//               pLine->setStart(pPIStart);
-//               pLine->setEnd(pEnd);
-//
-//               pCoordGeom->GeomList().addItem(pLine);
-//            }
-//         }
-//         else
-//         {
-//            // horizontal curve
-//            CComPtr<IHorzCurve> hCurve;
-//            CollectionIndexType curveIdx = CollectionIndexType(iter - alignmentData.HorzCurves.begin());
-//            pPGSuperAlignment->GetCurve(curveIdx, &hCurve);
-//            CComPtr<IPoint2d> pntTS, pntSC, pntPI, pntCS, pntST, pntCC;
-//            pPGSuperAlignment->GetCurvePoint(curveIdx, cptTS, pgsTypes::pcGlobal, &pntTS);
-//            pPGSuperAlignment->GetCurvePoint(curveIdx, cptSC, pgsTypes::pcGlobal, &pntSC);
-//            pPGSuperAlignment->GetCurvePoint(curveIdx, cptPI, pgsTypes::pcGlobal, &pntPI);
-//            pPGSuperAlignment->GetCurvePoint(curveIdx, cptCS, pgsTypes::pcGlobal, &pntCS);
-//            pPGSuperAlignment->GetCurvePoint(curveIdx, cptST, pgsTypes::pcGlobal, &pntST);
-//            pPGSuperAlignment->GetCurvePoint(curveIdx, cptCC, pgsTypes::pcGlobal, &pntCC);
-//
-//            Float64 radius;
-//            hCurve->get_Radius(&radius);
-//
-//            Float64 Lin, Lout;
-//            hCurve->get_SpiralLength(spEntry, &Lin);
-//            hCurve->get_SpiralLength(spExit, &Lout);
-//
-//            CurveDirectionType dirType;
-//            hCurve->get_Direction(&dirType);
-//
-//            Float64 x, y;
-//            pntTS->get_X(&x);
-//            pntTS->get_Y(&y);
-//            x = ::ConvertFromSysUnits(x, unitMeasure::Feet);
-//            y = ::ConvertFromSysUnits(y, unitMeasure::Feet);
-//
-//            // line before curve
-//            Float64 dx = x - prev_x;
-//            Float64 dy = y - prev_y;
-//            Float64 length = sqrt(dx*dx + dy*dy);
-//            if (!IsZero(length))
-//            {
-//               LX::Line* pLine = pFactory->createLine();
-//               LX::Start* pStart = nullptr;
-//               LX::End*   pEnd = nullptr;
-//
-//               pStart = pFactory->createStart();
-//               pStart->addItem(prev_y); // northing
-//               pStart->addItem(prev_x); // easting
-//
-//               pEnd = pFactory->createEnd();
-//               pEnd->addItem(y); // northing
-//               pEnd->addItem(x); // easting
-//
-//               pLine->setStart(pStart);
-//               pLine->setEnd(pEnd);
-//
-//               pCoordGeom->GeomList().addItem(pLine);
-//            }
-//
-//            // Entry spiral
-//            if (!IsZero(Lin))
-//            {
-//               LX::Spiral* pSpiral = pFactory->createSpiral();
-//               pSpiral->setSpiType(LX::EnumSpiralType::k_clothoid); // only kind of spiral PGSuper supports
-//               pSpiral->setRot(dirType == cdLeft ? LX::EnumClockwise::k_ccw : LX::EnumClockwise::k_cw);
-//
-//               pSpiral->setLength(::ConvertFromSysUnits(Lin, unitMeasure::Feet));
-//               pSpiral->setRadiusStart(std::numeric_limits<Float64>::infinity());
-//               pSpiral->setRadiusEnd(::ConvertFromSysUnits(radius, unitMeasure::Feet));
-//
-//               CComPtr<IPoint2d> pntSPI;
-//               hCurve->get_SPI(spEntry, &pntSPI);
-//
-//               pntTS->get_X(&x);
-//               pntTS->get_Y(&y);
-//               LX::Start* pStart = pFactory->createStart();
-//               x = ::ConvertFromSysUnits(x, unitMeasure::Feet);
-//               y = ::ConvertFromSysUnits(y, unitMeasure::Feet);
-//               pStart->addItem(y); // northing
-//               pStart->addItem(x); // easting
-//               pSpiral->setStart(pStart);
-//
-//               pntSPI->get_X(&x);
-//               pntSPI->get_Y(&y);
-//               LX::POI* pPI = pFactory->createPOI();
-//               x = ::ConvertFromSysUnits(x, unitMeasure::Feet);
-//               y = ::ConvertFromSysUnits(y, unitMeasure::Feet);
-//               pPI->addItem(y); // northing
-//               pPI->addItem(x); // easting
-//               pSpiral->setPI(pPI);
-//
-//               pntSC->get_X(&x);
-//               pntSC->get_Y(&y);
-//               LX::End* pEnd = pFactory->createEnd();
-//               x = ::ConvertFromSysUnits(x, unitMeasure::Feet);
-//               y = ::ConvertFromSysUnits(y, unitMeasure::Feet);
-//               pEnd->addItem(y); // northing
-//               pEnd->addItem(x); // easting
-//               pSpiral->setEnd(pEnd);
-//
-//               pCoordGeom->GeomList().addItem(pSpiral);
-//            }
-//
-//            // Horizontal curve
-//            LX::Curve* pCurve = pFactory->createCurve();
-//            pCurve->setRot(dirType == cdLeft ? LX::EnumClockwise::k_ccw : LX::EnumClockwise::k_cw);
-//
-//            LX::Start* pStart = pFactory->createStart();
-//            pntSC->get_X(&x);
-//            pntSC->get_Y(&y);
-//            x = ::ConvertFromSysUnits(x, unitMeasure::Feet);
-//            y = ::ConvertFromSysUnits(y, unitMeasure::Feet);
-//            pStart->addItem(y);
-//            pStart->addItem(x);
-//            pCurve->setStart(pStart);
-//
-//            LX::POI* pPI = pFactory->createPOI();
-//            pntPI->get_X(&x);
-//            pntPI->get_Y(&y);
-//            x = ::ConvertFromSysUnits(x, unitMeasure::Feet);
-//            y = ::ConvertFromSysUnits(y, unitMeasure::Feet);
-//            pPI->addItem(y);
-//            pPI->addItem(x);
-//            pCurve->setPI(pPI);
-//
-//            LX::Center* pCenter = pFactory->createCenter();
-//            pntCC->get_X(&x);
-//            pntCC->get_Y(&y);
-//            x = ::ConvertFromSysUnits(x, unitMeasure::Feet);
-//            y = ::ConvertFromSysUnits(y, unitMeasure::Feet);
-//            pCenter->addItem(y);
-//            pCenter->addItem(x);
-//            pCurve->setCenter(pCenter);
-//
-//            LX::End* pEnd = pFactory->createEnd();
-//            pntCS->get_X(&x);
-//            pntCS->get_Y(&y);
-//            x = ::ConvertFromSysUnits(x, unitMeasure::Feet);
-//            y = ::ConvertFromSysUnits(y, unitMeasure::Feet);
-//            pEnd->addItem(y);
-//            pEnd->addItem(x);
-//            pCurve->setEnd(pEnd);
-//            prev_x = x;
-//            prev_y = y;
-//
-//            pCoordGeom->GeomList().addItem(pCurve);
-//
-//            // Exit spiral
-//            if (!IsZero(Lout))
-//            {
-//               LX::Spiral* pSpiral = pFactory->createSpiral();
-//               pSpiral->setSpiType(LX::EnumSpiralType::k_clothoid); // only kind of spiral PGSuper supports
-//               pSpiral->setRot(dirType == cdLeft ? LX::EnumClockwise::k_ccw : LX::EnumClockwise::k_cw);
-//
-//               pSpiral->setLength(::ConvertFromSysUnits(Lout, unitMeasure::Feet));
-//               pSpiral->setRadiusStart(::ConvertFromSysUnits(radius, unitMeasure::Feet));
-//               pSpiral->setRadiusEnd(std::numeric_limits<Float64>::infinity());
-//
-//               CComPtr<IPoint2d> pntSPI;
-//               hCurve->get_SPI(spExit, &pntSPI);
-//
-//               pntCS->get_X(&x);
-//               pntCS->get_Y(&y);
-//               LX::Start* pStart = pFactory->createStart();
-//               x = ::ConvertFromSysUnits(x, unitMeasure::Feet);
-//               y = ::ConvertFromSysUnits(y, unitMeasure::Feet);
-//               pStart->addItem(y); // northing
-//               pStart->addItem(x); // easting
-//               pSpiral->setStart(pStart);
-//
-//               pntSPI->get_X(&x);
-//               pntSPI->get_Y(&y);
-//               LX::POI* pPI = pFactory->createPOI();
-//               x = ::ConvertFromSysUnits(x, unitMeasure::Feet);
-//               y = ::ConvertFromSysUnits(y, unitMeasure::Feet);
-//               pPI->addItem(y); // northing
-//               pPI->addItem(x); // easting
-//               pSpiral->setPI(pPI);
-//
-//               pntST->get_X(&x);
-//               pntST->get_Y(&y);
-//               LX::End* pEnd = pFactory->createEnd();
-//               x = ::ConvertFromSysUnits(x, unitMeasure::Feet);
-//               y = ::ConvertFromSysUnits(y, unitMeasure::Feet);
-//               pEnd->addItem(y); // northing
-//               pEnd->addItem(x); // easting
-//               pSpiral->setEnd(pEnd);
-//
-//               pCoordGeom->GeomList().addItem(pSpiral);
-//
-//               prev_x = x;
-//               prev_y = y;
-//            }
-//         }
-//      }
-//
-//      // last line
-//      Float64 dx = end_x - prev_x;
-//      Float64 dy = end_y - prev_y;
-//      Float64 length = sqrt(dx*dx + dy*dy);
-//      if (!IsZero(length))
-//      {
-//         LX::Line* pLine = pFactory->createLine();
-//         LX::Start* pStart = nullptr;
-//         LX::End*   pEnd = nullptr;
-//
-//         pStart = pFactory->createStart();
-//         pStart->addItem(prev_y); // northing
-//         pStart->addItem(prev_x); // easting
-//
-//         pEnd = pFactory->createEnd();
-//         pEnd->addItem(end_y); // northing
-//         pEnd->addItem(end_x); // easting
-//
-//         pLine->setStart(pStart);
-//         pLine->setEnd(pEnd);
-//
-//         pCoordGeom->GeomList().addItem(pLine);
-//      }
-//   }
-//
-//   return pAlignment;
-//}
-//
-//LX::Profile* CIfcAlignmentConverter::CreateProfile(IBroker* pBroker, LX::IFactory* pFactory)
-//{
-//   LX::Profile* pProfile = pFactory->createProfile();
-//   pProfile->setDesc(_T("Profile exported from PGSuper"));
-//
-//   // ProfAlign
-//   LX::ProfAlign* pProfAlign = pFactory->createProfAlign();
-//   pProfAlign->setName(_T("Profile Grade Line"));
-//
-//   GET_IFACE2(pBroker, IRoadwayData, pRoadwayData);
-//
-//   const ProfileData2& profileData = pRoadwayData->GetProfileData2();
-//   if (profileData.VertCurves.size() == 0)
-//   {
-//      LX::PVI* pBeginVI = pFactory->createPVI();
-//      Float64 station = profileData.Station;
-//      Float64 elevation = profileData.Elevation;
-//      station = ::ConvertFromSysUnits(station, unitMeasure::Feet);
-//      elevation = ::ConvertFromSysUnits(elevation, unitMeasure::Feet);
-//
-//      pBeginVI->addItem(station);
-//      pBeginVI->addItem(elevation);
-//
-//      LX::PVI* pEndVI = pFactory->createPVI();
-//      station += 100;
-//      elevation += 100 * profileData.Grade;
-//
-//      pEndVI->addItem(station);
-//      pEndVI->addItem(elevation);
-//
-//      pProfAlign->VertGeomList().addItem(pBeginVI);
-//      pProfAlign->VertGeomList().addItem(pEndVI);
-//   }
-//   else
-//   {
-//      GET_IFACE2(pBroker, IRoadway, pPGSuperAlignment);
-//
-//      auto begin = std::cbegin(profileData.VertCurves);
-//      auto iter = begin;
-//      auto end = std::cend(profileData.VertCurves);
-//      for (; iter != end; iter++)
-//      {
-//         const auto& vcData = *iter;
-//         if (IsZero(vcData.L1))
-//         {
-//            // this is a PVI
-//            if (iter == begin)
-//            {
-//               LX::PVI* pPVI = pFactory->createPVI();
-//               Float64 station = (IsEqual(profileData.Station, vcData.PVIStation) ? Min(0.0, profileData.Station) : profileData.Station);
-//               Float64 elevation = pPGSuperAlignment->GetElevation(station, 0.0);
-//               station = ::ConvertFromSysUnits(station, unitMeasure::Feet);
-//               elevation = ::ConvertFromSysUnits(elevation, unitMeasure::Feet);
-//               pPVI->addItem(station);
-//               pPVI->addItem(elevation);
-//               pProfAlign->VertGeomList().addItem(pPVI);
-//            }
-//
-//            LX::PVI* pPVI = pFactory->createPVI();
-//            Float64 elevation = pPGSuperAlignment->GetElevation(vcData.PVIStation, 0.0);
-//            elevation = ::ConvertFromSysUnits(elevation, unitMeasure::Feet);
-//            pPVI->addItem(::ConvertFromSysUnits(vcData.PVIStation, unitMeasure::Feet));
-//            pPVI->addItem(elevation);
-//            pProfAlign->VertGeomList().addItem(pPVI);
-//
-//            if (iter == end - 1)
-//            {
-//               LX::PVI* pPVI = pFactory->createPVI();
-//               Float64 elevation = pPGSuperAlignment->GetElevation(vcData.PVIStation + 100, 0.0);
-//               elevation = ::ConvertFromSysUnits(elevation, unitMeasure::Feet);
-//               pPVI->addItem(::ConvertFromSysUnits(vcData.PVIStation + 100.0, unitMeasure::Feet));
-//               pPVI->addItem(elevation);
-//               pProfAlign->VertGeomList().addItem(pPVI);
-//            }
-//         }
-//         else
-//         {
-//            // this is a vertical curve
-//
-//            CComPtr<IVertCurve> vertCurve;
-//            CollectionIndexType idx = CollectionIndexType(iter - begin);
-//            pPGSuperAlignment->GetVertCurve(idx, &vertCurve);
-//
-//            // first VI point is the begin of the first vert curve
-//            if (iter == begin)
-//            {
-//               CComPtr<IProfilePoint> pntBVC;
-//               vertCurve->get_BVC(&pntBVC);
-//               LX::PVI* pBeginVI = pFactory->createPVI();
-//               CComPtr<IStation> objStation;
-//               Float64 station, elevation;
-//               pntBVC->get_Station(&objStation);
-//               objStation->get_Value(&station);
-//               pntBVC->get_Elevation(&elevation);
-//               station = ::ConvertFromSysUnits(station, unitMeasure::Feet);
-//               elevation = ::ConvertFromSysUnits(elevation, unitMeasure::Feet);
-//
-//               pBeginVI->addItem(station);
-//               pBeginVI->addItem(elevation);
-//               pProfAlign->VertGeomList().addItem(pBeginVI);
-//            }
-//
-//            // do all the vert curves
-//            CComPtr<IProfilePoint> pntPVI;
-//            vertCurve->get_PVI(&pntPVI);
-//            CComPtr<IStation> objStation;
-//            Float64 station, elevation;
-//            pntPVI->get_Station(&objStation);
-//            objStation->get_Value(&station);
-//            pntPVI->get_Elevation(&elevation);
-//            station = ::ConvertFromSysUnits(station, unitMeasure::Feet);
-//            elevation = ::ConvertFromSysUnits(elevation, unitMeasure::Feet);
-//
-//            Float64 l1, l2;
-//            vertCurve->get_L1(&l1);
-//            vertCurve->get_L2(&l2);
-//            l1 = ::ConvertFromSysUnits(l1, unitMeasure::Feet);
-//            l2 = ::ConvertFromSysUnits(l2, unitMeasure::Feet);
-//
-//            if (IsEqual(l1, l2))
-//            {
-//               // symetrical VC
-//               LX::ParaCurve* pParaCurve = pFactory->createParaCurve();
-//               pParaCurve->addItem(station);
-//               pParaCurve->addItem(elevation);
-//               pParaCurve->setLength(l1 + l2);
-//               pProfAlign->VertGeomList().addItem(pParaCurve);
-//            }
-//            else
-//            {
-//               // unsymetrical VC
-//               LX::UnsymParaCurve* pParaCurve = pFactory->createUnsymParaCurve();
-//               pParaCurve->addItem(station);
-//               pParaCurve->addItem(elevation);
-//               pParaCurve->setLengthIn(l1);
-//               pParaCurve->setLengthOut(l2);
-//               pProfAlign->VertGeomList().addItem(pParaCurve);
-//            }
-//
-//            // end with the EVC of the last vert curve
-//            if (iter == end - 1)
-//            {
-//               CComPtr<IProfilePoint> pntEVC;
-//               vertCurve->get_EVC(&pntEVC);
-//               LX::PVI* pEndVI = pFactory->createPVI();
-//               CComPtr<IStation> objStation;
-//               Float64 station, elevation;
-//               pntEVC->get_Station(&objStation);
-//               objStation->get_Value(&station);
-//               pntEVC->get_Elevation(&elevation);
-//               station = ::ConvertFromSysUnits(station, unitMeasure::Feet);
-//               elevation = ::ConvertFromSysUnits(elevation, unitMeasure::Feet);
-//
-//               pEndVI->addItem(station);
-//               pEndVI->addItem(elevation);
-//               pProfAlign->VertGeomList().addItem(pEndVI);
-//            }
-//         }
-//      }
-//   }
-//
-//   pProfile->ProfAlign().addItem(pProfAlign);
-//   return pProfile;
-//}
-//
 //LX::CrossSects* CIfcAlignmentConverter::CreateCrossSections(IBroker* pBroker, LX::IFactory* pFactory)
 //{
 //   // This method creates
@@ -978,16 +800,90 @@ void CIfcAlignmentConverter::ConvertToIfc(IBroker* pBroker, const CString& strFi
 //}
 //
 
-void CIfcAlignmentConverter::ConvertToPGSuper(Ifc4x1::IfcAlignment* pAlignment, AlignmentData2* pAlignmentData, ProfileData2* pProfileData, RoadwaySectionData* pRoadwaySectionData)
+HRESULT CIfcAlignmentConverter::ConvertToPGSuper(IBroker* pBroker, CString& strFilePath)
 {
-   SetupUnits(pAlignment);
-   LoadAlignment(pAlignment);
+   USES_CONVERSION;
+   IfcParse::IfcFile file(T2A(strFilePath.GetBuffer()));
+
+   if (!file.good())
+   {
+      AfxMessageBox(_T("Unable to parse .ifc file"));
+      return S_OK;
+   }
+
+   AlignmentData2 alignment_data;
+   ProfileData2 profile_data;
+   RoadwaySectionData section_data;
+
+   m_Notes.clear();
+
+   auto strSchemaName = file.schema()->name();
+   bool bResult = false;
+   if (strSchemaName == std::string("IFC4X1"))
+   {
+      bResult = ConvertToPGSuper<Ifc4x1>(file, &alignment_data, &profile_data, &section_data);
+   }
+   else if (strSchemaName == std::string("IFC4X2"))
+   {
+      bResult = ConvertToPGSuper<Ifc4x2>(file, &alignment_data, &profile_data, &section_data);
+   }
+   else if (strSchemaName == std::string("IFC4X3_RC1"))
+   {
+      bResult = ConvertToPGSuper<Ifc4x3_rc1>(file, &alignment_data, &profile_data, &section_data);
+   }
+   //else if (strSchemaName == std::string("IFC4X3_RC2"))
+   //{
+#pragma Reminder("WORKING HERE - Still can't read 4x3 rc2 files")
+      // ConvertToPGSuper has pre-rc2 data types and constructs - need to generalize
+      //bResult = ConvertToPGSuper<Ifc4x3_rc2>(file, &alignment_data, &profile_data, &section_data);
+   //}
+   else
+   {
+      ATLASSERT(false); // is there a new schema?
+   }
+
+   auto notes = GetNotes();
+   std::_tstring strNotes;
+   for (auto note : notes)
+   {
+      strNotes += note + _T("\n");
+   }
+   AfxMessageBox(strNotes.c_str(), MB_OK);
+
+   if (bResult)
+   {
+      GET_IFACE2(pBroker, IEvents, pEvents);
+      pEvents->HoldEvents();
+
+      GET_IFACE2(pBroker, IRoadwayData, pRoadwayData);
+      pRoadwayData->SetAlignmentData2(alignment_data);
+      pRoadwayData->SetProfileData2(profile_data);
+      pRoadwayData->SetRoadwaySectionData(section_data);
+
+      pEvents->FirePendingEvents();
+   }
+
+   return S_OK;
+}
+
+template <typename Schema>
+bool CIfcAlignmentConverter::ConvertToPGSuper(IfcParse::IfcFile& file, AlignmentData2* pAlignmentData, ProfileData2* pProfileData, RoadwaySectionData* pRoadwaySectionData)
+{
+   InitUnits<Schema>(file);
+
+   auto alignment = GetAlignment<Schema>(file);
+   if (alignment == nullptr)
+      return false;
+
+   LoadAlignment<Schema>(alignment);
    *pAlignmentData = m_AlignmentData;
 
-   LoadProfile(pAlignment);
+   LoadProfile<Schema>(alignment);
    *pProfileData = m_ProfileData;
 
 #pragma Reminder("WORKING HERE - Roadway Section Data")
+
+   return true;
 }
 
 std::vector<std::_tstring> CIfcAlignmentConverter::GetNotes()
@@ -995,72 +891,45 @@ std::vector<std::_tstring> CIfcAlignmentConverter::GetNotes()
    return m_Notes;
 }
 
-void CIfcAlignmentConverter::SetupUnits(Ifc4x1::IfcAlignment* pAlignment)
+template <typename Schema>
+typename Schema::IfcAlignment* CIfcAlignmentConverter::GetAlignment(IfcParse::IfcFile& file)
 {
-#pragma Reminder("WORKING HERE - Units")
-   // need to work back from pAlignment to the project to get the unit of measure in the file
-   // for now, we will assume meter because that is what PGSuper writes and it is what is used in the IFC example file
-   m_pLengthUnit = &unitMeasure::Meter;
+   USES_CONVERSION;
 
-//   LX::Units* pUnits = pLandXml->getUnits();
-//   LX::Object* pSelectedUnits = pUnits->getSelectedUnits();
-//   LX::Metric* pMetric = dynamic_cast<LX::Metric*>(pSelectedUnits);
-//   LX::Imperial* pImperial = dynamic_cast<LX::Imperial*>(pSelectedUnits);
-//   if (pMetric)
-//   {
-//      switch (pMetric->getLinearUnit())
-//      {
-//      case LX::EnumMetLinear::k_centimeter:
-//         m_pLengthUnit = &unitMeasure::Centimeter;
-//         break;
-//
-//      case LX::EnumMetLinear::k_kilometer:
-//         m_pLengthUnit = &unitMeasure::Kilometer;
-//         break;
-//
-//      case LX::EnumMetLinear::k_meter:
-//         m_pLengthUnit = &unitMeasure::Meter;
-//         break;
-//
-//      case LX::EnumMetLinear::k_millimeter:
-//         m_pLengthUnit = &unitMeasure::Millimeter;
-//         break;
-//
-//      default:
-//         XML_THROW(_T("An unknown unit of measure of encountered"));
-//      }
-//   }
-//   else if (pImperial)
-//   {
-//      switch (pImperial->getLinearUnit())
-//      {
-//      case LX::EnumImpLinear::k_foot:
-//         m_pLengthUnit = &unitMeasure::Feet;
-//         break;
-//
-//      case LX::EnumImpLinear::k_USSurveyFoot:
-//         m_pLengthUnit = &unitMeasure::USSurveyFoot;
-//         break;
-//
-//      case LX::EnumImpLinear::k_inch:
-//         m_pLengthUnit = &unitMeasure::Inch;
-//         break;
-//
-//      case LX::EnumImpLinear::k_mile:
-//         m_pLengthUnit = &unitMeasure::Mile;
-//         break;
-//
-//      default:
-//         XML_THROW(_T("An unknown unit of measure of encountered"));
-//      }
-//   }
-//   else
-//   {
-//      XML_THROW(_T("An unknown unit type of encountered"));
-//   }
+   Schema::IfcAlignment::list::ptr alignments = file.instances_by_type<Schema::IfcAlignment>();
+   std::vector<Schema::IfcAlignment*> valid_alignments;
+
+   for (auto alignment : *alignments)
+   {
+      if (IsValidAlignment<Schema>(alignment))
+         valid_alignments.push_back(alignment);
+   }
+
+   if (valid_alignments.size() == 0)
+   {
+      AfxMessageBox(_T("File does not contain alignments that are compatible with this software."), MB_OK);
+   }
+   else
+   {
+      std::ostringstream os;
+      for (auto alignment : valid_alignments)
+      {
+         auto strLabel = (alignment->hasName() ? alignment->Name() : alignment->hasDescription() ? alignment->Description() : "Unnamed");
+         os << strLabel << std::endl;
+      }
+      int result = AfxChoose(_T("Select Alignment"), _T("Select alignment to import"), A2T(os.str().c_str()), 0, TRUE);
+      if (result < 0)
+         return nullptr; // dialog was canceled
+      else
+         return valid_alignments[result];
+   }
+
+
+   return nullptr;
 }
 
-void CIfcAlignmentConverter::LoadAlignment(Ifc4x1::IfcAlignment* pAlignment)
+template <typename Schema>
+void CIfcAlignmentConverter::LoadAlignment(typename Schema::IfcAlignment* pAlignment)
 {
    m_bAlignmentStarted = false; // the alignment datablock has not yet been started
 
@@ -1071,7 +940,7 @@ void CIfcAlignmentConverter::LoadAlignment(Ifc4x1::IfcAlignment* pAlignment)
    m_AlignmentData.HorzCurves.clear();
 
    auto axis = pAlignment->Axis();
-   auto curve = axis->as<Ifc4x1::IfcAlignmentCurve>();
+   auto curve = axis->as<Schema::IfcAlignmentCurve>();
    auto horizontal = curve->Horizontal();
 
    Float64 current_station; // station at the start of the current element
@@ -1095,18 +964,18 @@ void CIfcAlignmentConverter::LoadAlignment(Ifc4x1::IfcAlignment* pAlignment)
       auto segment(*iter);
       bool bIsThereANextSegment = ((iter+1) != end);
 
-      auto linear = segment->CurveGeometry()->as<Ifc4x1::IfcLineSegment2D>();
-      auto transition = segment->CurveGeometry()->as<Ifc4x1::IfcTransitionCurveSegment2D>();
-      auto curve = segment->CurveGeometry()->as<Ifc4x1::IfcCircularArcSegment2D>();
+      auto linear = segment->CurveGeometry()->as<Schema::IfcLineSegment2D>();
+      auto transition = segment->CurveGeometry()->as<Schema::IfcTransitionCurveSegment2D>();
+      auto curve = segment->CurveGeometry()->as<Schema::IfcCircularArcSegment2D>();
 
-      Ifc4x1::IfcTransitionCurveSegment2D* entrySpiral = nullptr;
-      Ifc4x1::IfcTransitionCurveSegment2D* exitSpiral = nullptr;
+      Schema::IfcTransitionCurveSegment2D* entrySpiral = nullptr;
+      Schema::IfcTransitionCurveSegment2D* exitSpiral = nullptr;
 
       Float64 end_station = current_station;
 
       if (linear)
       {
-         end_station = OnLine(current_station, linear);
+         end_station = OnLine<Schema,Schema::IfcLineSegment2D>(current_station, linear);
       }
       else if (transition)
       {
@@ -1124,7 +993,7 @@ void CIfcAlignmentConverter::LoadAlignment(Ifc4x1::IfcAlignment* pAlignment)
          {
             // if there is a next segment, check to see if it is a curve
             iter++; // advance to next segment
-            curve = (*iter)->CurveGeometry()->as<Ifc4x1::IfcCircularArcSegment2D>();
+            curve = (*iter)->CurveGeometry()->as<Schema::IfcCircularArcSegment2D>();
             if (curve)
             {
                // it's a curve... is there an element that follows the curve?
@@ -1132,7 +1001,7 @@ void CIfcAlignmentConverter::LoadAlignment(Ifc4x1::IfcAlignment* pAlignment)
                if (bIsThereANextSegment)
                {
                   // if there is a next segment, see if it is a spiral
-                  exitSpiral = (*(iter+1))->CurveGeometry()->as<Ifc4x1::IfcTransitionCurveSegment2D>();
+                  exitSpiral = (*(iter+1))->CurveGeometry()->as<Schema::IfcTransitionCurveSegment2D>();
 
                   // if not a spiral, pExitSpiral will be nullptr
                   // this is OK, it just means we have a Spiral-Curve situation
@@ -1144,7 +1013,7 @@ void CIfcAlignmentConverter::LoadAlignment(Ifc4x1::IfcAlignment* pAlignment)
                   }
                }
 
-               end_station = OnCurve(current_station, entrySpiral, curve, exitSpiral);
+               end_station = OnCurve<Schema, Schema::IfcTransitionCurveSegment2D, Schema::IfcCircularArcSegment2D>(current_station, entrySpiral, curve, exitSpiral);
             }
             else
             {
@@ -1163,7 +1032,7 @@ void CIfcAlignmentConverter::LoadAlignment(Ifc4x1::IfcAlignment* pAlignment)
          if (bIsThereANextSegment)
          {
             // check to see if the next element is a spiral
-            exitSpiral = (*(iter + 1))->CurveGeometry()->as<Ifc4x1::IfcTransitionCurveSegment2D>();
+            exitSpiral = (*(iter + 1))->CurveGeometry()->as<Schema::IfcTransitionCurveSegment2D>();
             
             // if not a spiral, pExitSpiral will be nullptr
             // this is OK, it just means we have a Spiral-Curve situation
@@ -1177,16 +1046,16 @@ void CIfcAlignmentConverter::LoadAlignment(Ifc4x1::IfcAlignment* pAlignment)
             // the exit spiral and the curve are touching
             if (bIsThereANextSegment)
             {
-               auto next_curve = (*(iter))->CurveGeometry()->as<Ifc4x1::IfcCircularArcSegment2D>();
+               auto next_curve = (*(iter))->CurveGeometry()->as<Schema::IfcCircularArcSegment2D>();
                if (next_curve && exitSpiral)
                {
                   CComPtr<IPoint2d> pntSpiralStart, pntSpiralPI, pntSpiralEnd;
-                  GetSpiralPoints(exitSpiral, &pntSpiralStart, &pntSpiralPI, &pntSpiralEnd);
+                  GetSpiralPoints<Schema>(exitSpiral, &pntSpiralStart, &pntSpiralPI, &pntSpiralEnd);
 
                   CComPtr<IPoint2d> pntNextCurveStart, pntNextCurvePI, pntNextCurveEnd, pntNextCurveCenter;
-                  GetCurvePoints(next_curve, &pntNextCurveStart, &pntNextCurvePI, &pntNextCurveEnd, &pntNextCurveCenter);
+                  GetCurvePoints<Schema,Schema::IfcCircularArcSegment2D>(next_curve, &pntNextCurveStart, &pntNextCurvePI, &pntNextCurveEnd, &pntNextCurveCenter);
 
-                  if (SameLocation(pntSpiralEnd, pntNextCurveStart) == S_FALSE)
+                  if (SameLocation(pntSpiralEnd,pntNextCurveStart,m_Precision) == S_FALSE)
                   {
                      IFC_THROW(_T("PGSuper cannot model a transition spiral between two circular curves."));
                   }
@@ -1195,7 +1064,7 @@ void CIfcAlignmentConverter::LoadAlignment(Ifc4x1::IfcAlignment* pAlignment)
          }
 
          ATLASSERT(entrySpiral == nullptr); // this must be the case
-         end_station = OnCurve(current_station, entrySpiral, curve, exitSpiral);
+         end_station = OnCurve<Schema, Schema::IfcTransitionCurveSegment2D, Schema::IfcCircularArcSegment2D>(current_station, entrySpiral, curve, exitSpiral);
       }
       else
       {
@@ -1205,13 +1074,14 @@ void CIfcAlignmentConverter::LoadAlignment(Ifc4x1::IfcAlignment* pAlignment)
    }
 }
 
-void CIfcAlignmentConverter::LoadProfile(Ifc4x1::IfcAlignment* pAlignment)
+template <typename Schema>
+void CIfcAlignmentConverter::LoadProfile(typename Schema::IfcAlignment* pAlignment)
 {
    m_ProfileState = PROFILE_NOT_STARTED;
    m_ProfileData.VertCurves.clear();
 
    auto axis = pAlignment->Axis();
-   auto curve = axis->as<Ifc4x1::IfcAlignmentCurve>();
+   auto curve = axis->as<Schema::IfcAlignmentCurve>();
    auto vertical = curve->hasVertical() ? curve->Vertical() : nullptr;
 
    auto segments = vertical ? vertical->Segments() : nullptr;
@@ -1228,23 +1098,23 @@ void CIfcAlignmentConverter::LoadProfile(Ifc4x1::IfcAlignment* pAlignment)
 
    for (auto segment : *segments)
    {
-      auto linear_segment = segment->as<Ifc4x1::IfcAlignment2DVerSegLine>();
-      auto parabolic_arc = segment->as<Ifc4x1::IfcAlignment2DVerSegParabolicArc>();
-      auto circular_arc = segment->as<Ifc4x1::IfcAlignment2DVerSegCircularArc>();
+      auto linear_segment = segment->as<Schema::IfcAlignment2DVerSegLine>();
+      auto parabolic_arc = segment->as<Schema::IfcAlignment2DVerSegParabolicArc>();
+      auto circular_arc = segment->as<Schema::IfcAlignment2DVerSegCircularArc>();
 
       if (linear_segment)
       {
-         LinearSegment(linear_segment);
+         LinearSegment<Schema, Schema::IfcAlignment2DVerSegLine>(linear_segment);
       }
       else if (parabolic_arc)
       {
-         ParabolicSegment(parabolic_arc);
+         ParabolicSegment<Schema, Schema::IfcAlignment2DVerSegParabolicArc>(parabolic_arc);
       }
       else if (circular_arc)
       {
 #pragma Reminder("WORKING HERE - Need to deal with circular arcs") // treat it as a parabola for now
-         parabolic_arc = (Ifc4x1::IfcAlignment2DVerSegParabolicArc*)circular_arc;
-         ParabolicSegment(parabolic_arc);
+         parabolic_arc = (Schema::IfcAlignment2DVerSegParabolicArc*)circular_arc;
+         ParabolicSegment<Schema, Schema::IfcAlignment2DVerSegParabolicArc>(parabolic_arc);
          // TODO: provide a better exception
          //IFC_THROW(_T("Circular curve element was found in the profile definition. PGSuper does not support circular vertical curves."));
       }
@@ -1339,20 +1209,21 @@ void CIfcAlignmentConverter::LoadProfile(Ifc4x1::IfcAlignment* pAlignment)
 //                     */
 //}
 //
-void CIfcAlignmentConverter::GetPoint(Ifc4x1::IfcCartesianPoint* pPoint, Float64* pX, Float64* pY)
-{
-   auto coordinates = pPoint->Coordinates();
-   ATLASSERT(2 <= coordinates.size());
-   *pX = coordinates[0];
-   *pY = coordinates[1];
-}
 
-Float64 CIfcAlignmentConverter::OnLine(Float64 startStation, Ifc4x1::IfcLineSegment2D* pLine)
+template <typename Schema,typename Segment>
+Float64 CIfcAlignmentConverter::OnLine(Float64 startStation, typename Segment* pLine)
 {
    Float64 sx, sy;
-   GetPoint(pLine->StartPoint(), &sx, &sy);
+   GetPoint<Schema>(pLine->StartPoint(), &sx, &sy);
 
-   Float64 end_station = startStation + pLine->SegmentLength();
+   Float64 length = pLine->SegmentLength();
+   Float64 startDirection = pLine->StartDirection();
+   return OnLine(sx, sy, startStation, startDirection, length);
+}
+
+Float64 CIfcAlignmentConverter::OnLine(Float64 sx,Float64 sy,Float64 startStation,Float64 startDirection, Float64 length)
+{
+   Float64 end_station = startStation + length;
 
    if (!m_bAlignmentStarted)
    {
@@ -1360,7 +1231,7 @@ Float64 CIfcAlignmentConverter::OnLine(Float64 startStation, Ifc4x1::IfcLineSegm
       m_AlignmentData.RefStation = startStation;
       m_AlignmentData.xRefPoint = sx;
       m_AlignmentData.yRefPoint = sy;
-      m_AlignmentData.Direction = pLine->StartDirection();
+      m_AlignmentData.Direction = startDirection;
 
       if (IsZero(m_AlignmentData.Direction))
          m_AlignmentData.Direction = 0.0;
@@ -1380,7 +1251,7 @@ Float64 CIfcAlignmentConverter::OnLine(Float64 startStation, Ifc4x1::IfcLineSegm
          hcData.EntrySpiral = 0;
          hcData.ExitSpiral = 0;
          hcData.bFwdTangent = true;
-         hcData.FwdTangent = pLine->StartDirection();
+         hcData.FwdTangent = startDirection;
 
          m_AlignmentData.HorzCurves.push_back(hcData);
       }
@@ -1391,7 +1262,8 @@ Float64 CIfcAlignmentConverter::OnLine(Float64 startStation, Ifc4x1::IfcLineSegm
    return end_station;
 }
 
-Float64 CIfcAlignmentConverter::OnCurve(Float64 startStation, Ifc4x1::IfcTransitionCurveSegment2D* pEntrySpiral, Ifc4x1::IfcCircularArcSegment2D* pCurve, Ifc4x1::IfcTransitionCurveSegment2D* pExitSpiral)
+template <typename Schema,typename SpiralType, typename CurveType>
+Float64 CIfcAlignmentConverter::OnCurve(Float64 startStation, typename SpiralType* pEntrySpiral, typename CurveType* pCurve, typename SpiralType* pExitSpiral)
 {
    ATLASSERT(pCurve != nullptr);
 
@@ -1406,7 +1278,7 @@ Float64 CIfcAlignmentConverter::OnCurve(Float64 startStation, Ifc4x1::IfcTransit
    Float64 exit_spiral_length = 0;
    if (pEntrySpiral)
    {
-      GetSpiralPoints(pEntrySpiral, &pntEntryStart, &pntEntryPI, &pntEntryEnd);
+      GetSpiralPoints<Schema>(pEntrySpiral, &pntEntryStart, &pntEntryPI, &pntEntryEnd);
       entry_spiral_length = ::ConvertToSysUnits(pEntrySpiral->SegmentLength(), *m_pLengthUnit);
 
       if (pntEntryStart == nullptr || pntEntryPI == nullptr || pntEntryEnd == nullptr)
@@ -1424,11 +1296,11 @@ Float64 CIfcAlignmentConverter::OnCurve(Float64 startStation, Ifc4x1::IfcTransit
          {
             m_Notes.push_back(std::_tstring(_T("Start radius of entry spiral taken to be infinite")));
          }
-         CheckSpiralType(pEntrySpiral);
+         CheckSpiralType<Schema,SpiralType>(pEntrySpiral);
       }
    }
 
-   GetCurvePoints(pCurve, &pntCurveStart, &pntCurvePI, &pntCurveEnd, &pntCurveCenter);
+   GetCurvePoints<Schema,CurveType>(pCurve, &pntCurveStart, &pntCurvePI, &pntCurveEnd, &pntCurveCenter);
 
    if (pntCurveStart == nullptr || pntCurvePI == nullptr || pntCurveEnd == nullptr || pntCurveCenter == nullptr)
    {
@@ -1438,7 +1310,7 @@ Float64 CIfcAlignmentConverter::OnCurve(Float64 startStation, Ifc4x1::IfcTransit
 
    if (pExitSpiral)
    {
-      GetSpiralPoints(pExitSpiral, &pntExitStart, &pntExitPI, &pntExitEnd);
+      GetSpiralPoints<Schema>(pExitSpiral, &pntExitStart, &pntExitPI, &pntExitEnd);
       exit_spiral_length = ::ConvertToSysUnits(pExitSpiral->SegmentLength(), *m_pLengthUnit);
 
       if (pntExitStart == nullptr || pntExitPI == nullptr || pntExitEnd == nullptr)
@@ -1456,7 +1328,7 @@ Float64 CIfcAlignmentConverter::OnCurve(Float64 startStation, Ifc4x1::IfcTransit
          {
             m_Notes.push_back(std::_tstring(_T("End radius of exit spiral taken to be infinite")));
          }
-         CheckSpiralType(pExitSpiral);
+         CheckSpiralType<Schema,SpiralType>(pExitSpiral);
       }
    }
 
@@ -1503,7 +1375,7 @@ Float64 CIfcAlignmentConverter::OnCurve(Float64 startStation, Ifc4x1::IfcTransit
          m_Notes.push_back(std::_tstring(_T("End radius of the entry sprial does not match the radius of the circular curve. The entry spiral end radius will be ignored.")));
       }
 
-      if (SameLocation(pntEntryEnd, pntCurveStart) == S_FALSE)
+      if (SameLocation(pntEntryEnd,pntCurveStart,m_Precision) == S_FALSE)
       {
          m_Notes.push_back(std::_tstring(_T("The end of the entry spiral does not coincide with the start of the circular curve. The end of the entry spiral has been adjusted.")));
       }
@@ -1525,7 +1397,7 @@ Float64 CIfcAlignmentConverter::OnCurve(Float64 startStation, Ifc4x1::IfcTransit
          m_Notes.push_back(std::_tstring(_T("Start radius of the exit sprial does not match the radius of the circular curve. The exit spiral start radius will be ignored.")));
       }
 
-      if (SameLocation(pntCurveEnd, pntExitStart) == S_FALSE)
+      if (SameLocation(pntCurveEnd,pntExitStart,m_Precision) == S_FALSE)
       {
          m_Notes.push_back(std::_tstring(_T("The start of the exit spiral does not coincide with the end of the circular curve. The exit spiral has been adjusted.")));
       }
@@ -1554,12 +1426,12 @@ Float64 CIfcAlignmentConverter::OnCurve(Float64 startStation, Ifc4x1::IfcTransit
          m_Notes.push_back(std::_tstring(_T("Start radius of the exit sprial does not match the radius of the circular curve. The exit spiral start radius will be ignored.")));
       }
 
-      if (SameLocation(pntEntryEnd, pntCurveStart) == S_FALSE)
+      if (SameLocation(pntEntryEnd,pntCurveStart,m_Precision) == S_FALSE)
       {
          m_Notes.push_back(std::_tstring(_T("The end of the entry spiral does not coincide with the start of the circular curve. The entry spiral has been adjusted.")));
       }
 
-      if (SameLocation(pntCurveEnd, pntExitStart) == S_FALSE)
+      if (SameLocation(pntCurveEnd,pntExitStart,m_Precision) == S_FALSE)
       {
          m_Notes.push_back(std::_tstring(_T("The start of the exit spiral does not coincide with the end of the circular curve. The exit spiral has been adjusted.")));
       }
@@ -1635,7 +1507,8 @@ Float64 CIfcAlignmentConverter::OnCurve(Float64 startStation, Ifc4x1::IfcTransit
    return end_station;
 }
 
-void CIfcAlignmentConverter::GetCurvePoints(Ifc4x1::IfcCircularArcSegment2D* pCurve, IPoint2d** ppStart, IPoint2d** ppPI, IPoint2d** ppEnd, IPoint2d** ppCenter)
+template <typename Schema, typename CurveType>
+void CIfcAlignmentConverter::GetCurvePoints(typename CurveType* pCurve, IPoint2d** ppStart, IPoint2d** ppPI, IPoint2d** ppEnd, IPoint2d** ppCenter)
 {
    auto pStart = pCurve->StartPoint();
    auto bkTangentBrg = pCurve->StartDirection();
@@ -1646,7 +1519,7 @@ void CIfcAlignmentConverter::GetCurvePoints(Ifc4x1::IfcCircularArcSegment2D* pCu
    Float64 T = R*tan(delta/2);
 
    Float64 sx, sy;
-   GetPoint(pStart, &sx, &sy);
+   GetPoint<Schema>(pStart, &sx, &sy);
    CComPtr<IPoint2d> pntStart;
    pntStart.CoCreateInstance(CLSID_Point2d);
    pntStart->Move(sx, sy);
@@ -1674,7 +1547,8 @@ Float64 SpiralY(Float64 ls, Float64 angle)
    return ls*(angle / 3 - pow(angle, 3) / 42 + pow(angle, 5) / 1320 - pow(angle, 7) / 75600);
 }
 
-void CIfcAlignmentConverter::GetSpiralPoints(Ifc4x1::IfcTransitionCurveSegment2D* pSpiral, IPoint2d** ppStart, IPoint2d** ppPI, IPoint2d** ppEnd)
+template <typename Schema,typename SpiralType>
+void CIfcAlignmentConverter::GetSpiralPoints(typename SpiralType* pSpiral, IPoint2d** ppStart, IPoint2d** ppPI, IPoint2d** ppEnd)
 {
    auto pStart = pSpiral->StartPoint();
    auto bkTangentBrg = pSpiral->StartDirection();
@@ -1683,7 +1557,7 @@ void CIfcAlignmentConverter::GetSpiralPoints(Ifc4x1::IfcTransitionCurveSegment2D
    bool bIsCCW = (pSpiral->hasStartRadius() ? pSpiral->IsStartRadiusCCW() : pSpiral->IsEndRadiusCCW());
 
    Float64 sx, sy;
-   GetPoint(pStart, &sx, &sy);
+   GetPoint<Schema>(pStart, &sx, &sy);
    CComPtr<IPoint2d> pntStart;
    pntStart.CoCreateInstance(CLSID_Point2d);
    pntStart->Move(sx, sy);
@@ -1710,7 +1584,8 @@ void CIfcAlignmentConverter::GetSpiralPoints(Ifc4x1::IfcTransitionCurveSegment2D
    }
 }
 
-void CIfcAlignmentConverter::LinearSegment(Ifc4x1::IfcAlignment2DVerSegLine* pLinearSegment)
+template <typename Schema,typename LineSegmentType>
+void CIfcAlignmentConverter::LinearSegment(typename LineSegmentType* pLinearSegment)
 {
    Float64 length = ::ConvertToSysUnits(pLinearSegment->HorizontalLength(),*m_pLengthUnit);
    Float64 start_gradient = pLinearSegment->StartGradient();
@@ -1740,7 +1615,8 @@ void CIfcAlignmentConverter::LinearSegment(Ifc4x1::IfcAlignment2DVerSegLine* pLi
    }
 }
 
-void CIfcAlignmentConverter::ParabolicSegment(Ifc4x1::IfcAlignment2DVerSegParabolicArc* pParaCurve)
+template <typename Schema, typename ParabolicSegmentType>
+void CIfcAlignmentConverter::ParabolicSegment(typename ParabolicSegmentType* pParaCurve)
 {
    // finish any open profile element
    Float64 start_gradient = pParaCurve->StartGradient();
@@ -1771,19 +1647,20 @@ void CIfcAlignmentConverter::ParabolicSegment(Ifc4x1::IfcAlignment2DVerSegParabo
    m_ProfileData.VertCurves.push_back(vcData);
 }
 
-void CIfcAlignmentConverter::CheckSpiralType(Ifc4x1::IfcTransitionCurveSegment2D* pSpiral)
+template <typename Schema, typename SpiralType>
+void CIfcAlignmentConverter::CheckSpiralType(typename SpiralType* pSpiral)
 {
    switch (pSpiral->TransitionCurveType())
    {
-   case Ifc4x1::IfcTransitionCurveType::IfcTransitionCurveType_BIQUADRATICPARABOLA:
-   case Ifc4x1::IfcTransitionCurveType::IfcTransitionCurveType_BLOSSCURVE:
-   case Ifc4x1::IfcTransitionCurveType::IfcTransitionCurveType_COSINECURVE:
-   case Ifc4x1::IfcTransitionCurveType::IfcTransitionCurveType_CUBICPARABOLA:
-   case Ifc4x1::IfcTransitionCurveType::IfcTransitionCurveType_SINECURVE:
+   case Schema::IfcTransitionCurveType::IfcTransitionCurveType_BIQUADRATICPARABOLA:
+   case Schema::IfcTransitionCurveType::IfcTransitionCurveType_BLOSSCURVE:
+   case Schema::IfcTransitionCurveType::IfcTransitionCurveType_COSINECURVE:
+   case Schema::IfcTransitionCurveType::IfcTransitionCurveType_CUBICPARABOLA:
+   case Schema::IfcTransitionCurveType::IfcTransitionCurveType_SINECURVE:
       m_Notes.push_back(std::_tstring(_T("Spiral type not supported. Assuming clothoid")));
       break;
 
-   case Ifc4x1::IfcTransitionCurveType::IfcTransitionCurveType_CLOTHOIDCURVE:
+   case Schema::IfcTransitionCurveType::IfcTransitionCurveType_CLOTHOIDCURVE:
       // this is ok... it is what we were expecting
       break;
 
@@ -1871,444 +1748,3 @@ void CIfcAlignmentConverter::CheckSpiralType(Ifc4x1::IfcTransitionCurveSegment2D
 //   // merge these into a single record... when this method is done, all sections in the vector
 //   // have Side = both
 //}
-
-
-
-#if defined USE_IFC4X1
-IfcSchema::IfcAlignment2DHorizontal* BuildAlignment(IBroker* pBroker, IfcHierarchyHelper<IfcSchema>& file)
-#elif defined USE_IFC4X3_RC2
-IfcSchema::IfcAlignmentHorizontal* BuildAlignment(IBroker* pBroker, IfcHierarchyHelper<IfcSchema>& file)
-#endif
-{
-#if defined USE_IFC4X1
-   boost::shared_ptr<IfcTemplatedEntityList<IfcSchema::IfcAlignment2DHorizontalSegment>> alignment_segments(new IfcTemplatedEntityList<IfcSchema::IfcAlignment2DHorizontalSegment>());
-#elif defined USE_IFC4X3_RC2
-   boost::shared_ptr<IfcTemplatedEntityList<IfcSchema::IfcAlignmentHorizontalSegment>> alignment_segments(new IfcTemplatedEntityList<IfcSchema::IfcAlignmentHorizontalSegment>());
-#endif
-
-   GET_IFACE2(pBroker, IGeometry, pGeometry);
-   GET_IFACE2(pBroker, IRoadway, pAlignment);
-   Float64 startStation, startElevation, startGrade;
-   CComPtr<IPoint2d> startPoint;
-   pAlignment->GetStartPoint(2, &startStation, &startElevation, &startGrade, &startPoint);
-
-   // create the start point
-   std::vector<Float64> vCoordinates;
-   vCoordinates.resize(2);
-   startPoint->Location(&vCoordinates[0], &vCoordinates[1]);
-   auto ifc_start_point = new IfcSchema::IfcCartesianPoint(vCoordinates);
-
-   // loop over all the horizontal curves
-   CComPtr<IPoint2d> prevPoint = startPoint;
-   auto ifc_prev_point = ifc_start_point;
-   IndexType nHCurves = pAlignment->GetCurveCount();
-   for (IndexType i = 0; i < nHCurves; i++)
-   {
-      CComPtr<IHorzCurve> curve;
-      pAlignment->GetCurve(i, &curve);
-
-      CComPtr<IPoint2d> pntTS;
-      pAlignment->GetCurvePoint(i, cptTS, pgsTypes::pcGlobal, &pntTS);
-
-      // create a line segment from end of previous alignment segment to the start of this curve
-      if (pntTS->SameLocation(prevPoint) == S_FALSE)
-      {
-         Float64 dist;
-         CComPtr<IDirection> direction;
-         pGeometry->Inverse(prevPoint, pntTS, &dist, &direction);
-         Float64 angle;
-         direction->get_Value(&angle);
-
-#if defined USE_IFC4X1
-         auto ifc_line_segment = new IfcSchema::IfcAlignment2DHorizontalSegment(boost::none, boost::none, boost::none, new IfcSchema::IfcLineSegment2D(ifc_prev_point, angle, dist));
-#elif defined USE_IFC4X3_RC2
-         auto ifc_line_segment = new IfcSchema::IfcAlignmentHorizontalSegment(boost::none, boost::none, ifc_prev_point, angle, 0.0, 0.0, dist, boost::none, IfcSchema::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_LINE);
-#endif
-         alignment_segments->push(ifc_line_segment);
-      }
-
-      // create this horizontal curve
-      CComPtr<IDirection> bkTangentBrg;
-      curve->get_BkTangentBrg(&bkTangentBrg);
-      Float64 bk_tangent_direction;
-      bkTangentBrg->get_Value(&bk_tangent_direction);
-
-      std::array<Float64, 2> Lspiral;
-      curve->get_SpiralLength(spEntry, &Lspiral[spEntry]);
-      curve->get_SpiralLength(spExit, &Lspiral[spExit]);
-
-      Float64 Lc;
-      curve->get_CurveLength(&Lc);
-
-      Float64 R;
-      curve->get_Radius(&R);
-
-      ATLASSERT(0 < R); // need to deal with zero radius curves, which gives us an angle point in the alignment
-
-      CurveDirectionType curve_direction;
-      curve->get_Direction(&curve_direction);
-      bool bIsCCW = (curve_direction == cdLeft) ? true : false;
-
-      // curve starts at the Tangent to Spiral point (TS)
-      pntTS->Location(&vCoordinates[0], &vCoordinates[1]);
-      auto ifc_start = new IfcSchema::IfcCartesianPoint(vCoordinates);
-
-      if (0.0 < Lspiral[spEntry])
-      {
-         // there is an entry spiral
-#if defined USE_IFC4X1
-         auto ifc_entry_spiral = new IfcSchema::IfcAlignment2DHorizontalSegment(boost::none, std::string("TS"), std::string("SC"), new IfcSchema::IfcTransitionCurveSegment2D(ifc_start, bk_tangent_direction, Lspiral[spEntry], boost::none, R, bIsCCW, bIsCCW, IfcSchema::IfcTransitionCurveType::IfcTransitionCurveType_CLOTHOIDCURVE));
-#elif defined USE_IFC4X3_RC2
-         auto ifc_entry_spiral = new IfcSchema::IfcAlignmentHorizontalSegment(std::string("TS"), std::string("SC"), ifc_start, bk_tangent_direction, 0.0, (bIsCCW ? 1.0 : -1.0)*R, Lspiral[spEntry], boost::none, IfcSchema::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CLOTHOID);
-#endif
-         alignment_segments->push(ifc_entry_spiral);
-
-         // spiral ends at the Spiral to Curve point (CS)
-         CComPtr<IPoint2d> pntSC;
-         pAlignment->GetCurvePoint(i, cptSC, pgsTypes::pcGlobal, &pntSC);
-         pntSC->Location(&vCoordinates[0], &vCoordinates[1]);
-         ifc_start = new IfcSchema::IfcCartesianPoint(vCoordinates);
-      }
-
-      // build the horizontal curve
-#if defined USE_IFC4X1
-      auto ifc_hcurve = new IfcSchema::IfcAlignment2DHorizontalSegment(boost::none, std::string("SC"), std::string("CS"), new IfcSchema::IfcCircularArcSegment2D(ifc_start, bk_tangent_direction, Lc, R, bIsCCW));
-#elif defined USE_IFC4X3_RC2
-      auto ifc_hcurve = new IfcSchema::IfcAlignmentHorizontalSegment(std::string("TS"), std::string("SC"), ifc_start, bk_tangent_direction, (bIsCCW ? 1.0 : -1.0)*R, (bIsCCW ? 1.0 : -1.0)*R, Lc, boost::none, IfcSchema::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CIRCULARARC);
-#endif
-      alignment_segments->push(ifc_hcurve);
-
-      if (0.0 < Lspiral[spExit])
-      {
-         // there is an exit spiral
-
-         // spiral starts at the Curve to Spiral point (CS)
-         CComPtr<IPoint2d> pntCS;
-         pAlignment->GetCurvePoint(i, cptCS, pgsTypes::pcGlobal, &pntCS);
-         pntCS->Location(&vCoordinates[0], &vCoordinates[1]);
-         ifc_start = new IfcSchema::IfcCartesianPoint(vCoordinates);
-
-#if defined USE_IFC4X1
-         auto ifc_exit_spiral = new IfcSchema::IfcAlignment2DHorizontalSegment(boost::none, std::string("CS"), std::string("ST"), new IfcSchema::IfcTransitionCurveSegment2D(ifc_start, bk_tangent_direction, Lspiral[spExit], R, boost::none, bIsCCW, bIsCCW, IfcSchema::IfcTransitionCurveType::IfcTransitionCurveType_CLOTHOIDCURVE));
-#elif defined USE_IFC4X3_RC2
-         auto ifc_exit_spiral = new IfcSchema::IfcAlignmentHorizontalSegment(std::string("TS"), std::string("SC"), ifc_start, bk_tangent_direction, (bIsCCW ? 1.0 : -1.0)*R, 0.0, Lspiral[spExit], boost::none, IfcSchema::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CLOTHOID);
-#endif
-         alignment_segments->push(ifc_exit_spiral);
-      }
-
-      // end of this curve (Spiral to Tangent, ST) becomes previous point for next alignment segment
-      prevPoint.Release();
-      pAlignment->GetCurvePoint(i, cptST, pgsTypes::pcGlobal, &prevPoint);
-      prevPoint->Location(&vCoordinates[0], &vCoordinates[1]);
-      ifc_prev_point = new IfcSchema::IfcCartesianPoint(vCoordinates);
-   }
-
-   // build a linear segment from end of previous alignment segment to the end of the alignment
-   Float64 endStation, endElevation, endGrade;
-   CComPtr<IPoint2d> endPoint;
-   pAlignment->GetEndPoint(2, &endStation, &endElevation, &endGrade, &endPoint);
-
-   if (prevPoint->SameLocation(endPoint) == S_FALSE)
-   {
-      // end the alignment with a line segment
-      Float64 dist;
-      CComPtr<IDirection> direction;
-      pGeometry->Inverse(prevPoint, endPoint, &dist, &direction);
-      Float64 angle;
-      direction->get_Value(&angle);
-
-#if defined USE_IFC4X1
-      auto ifc_line_segment = new IfcSchema::IfcAlignment2DHorizontalSegment(boost::none, boost::none, std::string("End"), new IfcSchema::IfcLineSegment2D(ifc_prev_point, angle, dist));
-#elif defined USE_IFC4X3_RC2
-      auto ifc_line_segment = new IfcSchema::IfcAlignmentHorizontalSegment(boost::none, std::string("End"), ifc_start_point, angle, 0.0, 0.0, dist, boost::none, IfcSchema::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_LINE);
-#endif
-      alignment_segments->push(ifc_line_segment);
-   }
-
-   // create a horizontal alignment from all the alignment segments
-#if defined USE_IFC4X1
-   auto horizontal_alignment = new IfcSchema::IfcAlignment2DHorizontal(startStation, alignment_segments);
-#elif defined USE_IFC4X3_RC2
-   auto horizontal_alignment = new IfcSchema::IfcAlignmentHorizontal(IfcParse::IfcGlobalId(), file.getSingle<IfcSchema::IfcOwnerHistory>(), boost::none, boost::none, boost::none, file.getSingle<IfcSchema::IfcLocalPlacement>(), file.getSingle<IfcSchema::IfcProductRepresentation>(), startStation, alignment_segments);
-#endif
-
-   return horizontal_alignment;
-}
-
-#if defined USE_IFC4X1
-IfcSchema::IfcAlignment2DVertical* BuildProfile(IBroker* pBroker, IfcHierarchyHelper<IfcSchema>& file)
-#elif defined USE_IFC4X3_RC2
-IfcSchema::IfcAlignmentVertical* BuildProfile(IBroker* pBroker, IfcHierarchyHelper<IfcSchema>& file)
-#endif
-{
-#if defined USE_IFC4X1
-   boost::shared_ptr<IfcTemplatedEntityList<IfcSchema::IfcAlignment2DVerticalSegment>> profile_segments(new IfcTemplatedEntityList<IfcSchema::IfcAlignment2DVerticalSegment>());
-#elif defined USE_IFC4X3_RC2
-   boost::shared_ptr<IfcTemplatedEntityList<IfcSchema::IfcAlignmentVerticalSegment>> profile_segments(new IfcTemplatedEntityList<IfcSchema::IfcAlignmentVerticalSegment>());
-#endif
-
-   // Profile is defined by profile segments located at "distance from start" of the alignment and "length".
-   // We can't use stations to define the profile.
-   // Distance from start is taken to be Station - Start Station
-
-   GET_IFACE2(pBroker, IRoadway, pAlignment);
-
-   Float64 startStation, startElevation, startGrade;
-   CComPtr<IPoint2d> startPoint;
-   pAlignment->GetStartPoint(2, &startStation, &startElevation, &startGrade, &startPoint);
-
-   Float64 prev_end_dist_along = 0; // startStation; // this is distance along alignment, not station
-   Float64 prev_end_gradiant = startGrade;
-   Float64 prev_end_height = startElevation;
-
-   IndexType nVCurves = pAlignment->GetVertCurveCount();
-   for (IndexType i = 0; i < nVCurves; i++)
-   {
-      CComPtr<IVertCurve> curve;
-      pAlignment->GetVertCurve(i, &curve);
-
-      CComPtr<IProfilePoint> startPoint;
-      curve->get_BVC(&startPoint);
-      CComPtr<IStation> station;
-      startPoint->get_Station(&station);
-      Float64 start_height;
-      startPoint->get_Elevation(&start_height);
-      ZoneIndexType zoneIdx;
-      Float64 start_dist_along;
-      station->GetStation(&zoneIdx, &start_dist_along);
-      start_dist_along -= startStation;
-#pragma Reminder("WORKING HERE - How to deal with station equations?") // see IfcReferent
-
-      if (!IsEqual(prev_end_dist_along, start_dist_along))
-      {
-         // create a linear segment between the last profile element and this curve
-         Float64 length = start_dist_along - prev_end_dist_along;
-#if defined USE_IFC4X1
-         profile_segments->push(new IfcSchema::IfcAlignment2DVerSegLine(boost::none, std::string("Start"), boost::none, prev_end_dist_along, length, prev_end_height, prev_end_gradiant));
-#elif defined USE_IFC4X3_RC2
-         profile_segments->push(new IfcSchema::IfcAlignmentVerticalSegment(std::string("Start"), boost::none, prev_end_dist_along, length, prev_end_height, prev_end_gradiant, prev_end_gradiant, 0, IfcSchema::IfcAlignmentVerticalSegmentTypeEnum::IfcAlignmentVerticalSegmentType_CONSTANTGRADIENT));
-#endif
-      }
-
-      Float64 l1, l2;
-      curve->get_L1(&l1);
-      curve->get_L2(&l2);
-      if (!IsEqual(l1, l2) && !IsZero(l2))
-      {
-         // compound curve
-         CComPtr<IProfilePoint> pviPoint;
-         curve->get_PVI(&pviPoint);
-         CComPtr<IStation> pviStation;
-         pviPoint->get_Station(&pviStation);
-         Float64 pviElevation;
-         curve->Elevation(CComVariant(pviStation), &pviElevation);
-         Float64 pviGrade;
-         curve->Grade(CComVariant(pviStation), &pviGrade);
-
-         Float64 start_gradient;
-         curve->get_EntryGrade(&start_gradient);
-
-         Float64 k1, k2;
-         curve->get_K1(&k1);
-         curve->get_K2(&k2);
-
-#if defined USE_IFC4X1
-         profile_segments->push(new IfcSchema::IfcAlignment2DVerSegParabolicArc(boost::none, std::string("BVC"), boost::none, start_dist_along, l1, start_height, start_gradient, fabs(1 / k1), ::BinarySign(k1) < 0 ? true : false));
-         profile_segments->push(new IfcSchema::IfcAlignment2DVerSegParabolicArc(boost::none, boost::none, std::string("EVC"), start_dist_along + l1, l2, pviElevation, pviGrade, fabs(1 / k2), ::BinarySign(k2) < 0 ? true : false));
-#elif defined USE_IFC4X3_RC2
-         profile_segments->push(new IfcSchema::IfcAlignmentVerticalSegment(boost::none, boost::none, start_dist_along, l1, start_height, start_gradient, pviGrade, k1, IfcSchema::IfcAlignmentVerticalSegmentTypeEnum::IfcAlignmentVerticalSegmentType_PARABOLICARC));
-         profile_segments->push(new IfcSchema::IfcAlignmentVerticalSegment(boost::none, boost::none, start_dist_along + l1, l2, pviElevation, pviGrade, end_gradient, k2, IfcSchema::IfcAlignmentVerticalSegmentTypeEnum::IfcAlignmentVerticalSegmentType_PARABOLICARC));
-#endif
-      }
-      else
-      {
-         Float64 horizontal_length;
-         curve->get_Length(&horizontal_length);
-         Float64 start_gradient, end_gradient;
-         curve->get_EntryGrade(&start_gradient);
-         curve->get_ExitGrade(&end_gradient);
-
-         if (IsEqual(start_gradient, end_gradient))
-         {
-            // this is just a straight line
-#if defined USE_IFC4X1
-            profile_segments->push(new IfcSchema::IfcAlignment2DVerSegLine(boost::none, boost::none, boost::none, prev_end_dist_along, l1, prev_end_height, start_gradient));
-#elif defined USE_IFC4X3_RC2
-            profile_segments->push(new IfcSchema::IfcAlignmentVerticalSegment(std::string("Start"), boost::none, prev_end_dist_along, l1, prev_end_height, prev_end_gradiant, prev_end_gradiant, 0, IfcSchema::IfcAlignmentVerticalSegmentTypeEnum::IfcAlignmentVerticalSegmentType_CONSTANTGRADIENT));
-#endif
-         }
-         else
-         {
-            Float64 k;
-            curve->get_K1(&k);
-#if defined USE_IFC4X1
-            profile_segments->push(new IfcSchema::IfcAlignment2DVerSegParabolicArc(boost::none, std::string("BVC"), std::string("EVC"), start_dist_along, horizontal_length, start_height, start_gradient, fabs(1 / k), ::BinarySign(k) < 0 ? true : false));
-#elif defined USE_IFC4X3_RC2
-            profile_segments->push(new IfcSchema::IfcAlignmentVerticalSegment(std::string("BVC"), std::string("EVC"), start_dist_along, horizontal_length, start_height, start_gradient, end_gradient, radius_of_curvature, IfcSchema::IfcAlignmentVerticalSegmentTypeEnum::IfcAlignmentVerticalSegmentType_PARABOLICARC));
-#endif
-         }
-      }
-
-      // setup parameters for next loop
-      CComPtr<IProfilePoint> evc;
-      curve->get_EVC(&evc);
-      CComPtr<IStation> evcStation;
-      evc->get_Station(&evcStation);
-      evcStation->GetStation(&zoneIdx, &prev_end_dist_along);
-      prev_end_dist_along -= startStation;
-      evc->get_Elevation(&prev_end_height);
-      curve->get_ExitGrade(&prev_end_gradiant);
-#pragma Reminder("WORKING HERE - How to deal with station equations?") // see IfcReferent
-   }
-
-   Float64 endStation, endElevation, endGrade;
-   CComPtr<IPoint2d> endPoint;
-   pAlignment->GetEndPoint(2, &endStation, &endElevation, &endGrade, &endPoint);
-   if (!IsEqual(prev_end_dist_along, endStation))
-   {
-      // create a linear segment between the last profile element and the end of the alignment
-      ATLASSERT(IsEqual(prev_end_gradiant, endGrade));
-      Float64 length = endStation - startStation - prev_end_dist_along;
-#if defined USE_IFC4X1
-      profile_segments->push(new IfcSchema::IfcAlignment2DVerSegLine(boost::none, boost::none, std::string("End"), prev_end_dist_along, length, prev_end_height, prev_end_gradiant));
-#elif defined USE_IFC4X3_RC2
-      profile_segments->push(new IfcSchema::IfcAlignmentVerticalSegment(boost::none, std::string("End"), prev_end_dist_along, length, prev_end_height, prev_end_gradiant, prev_end_gradiant, 0, IfcSchema::IfcAlignmentVerticalSegmentTypeEnum::IfcAlignmentVerticalSegmentType_CONSTANTGRADIENT));
-#endif
-
-      // check elevation
-      ATLASSERT(IsEqual(endElevation, prev_end_height + length*prev_end_gradiant));
-   }
-
-#if defined USE_IFC4X1
-   auto vertical_profile = new IfcSchema::IfcAlignment2DVertical(profile_segments);
-#elif defined USE_IFC4X3_RC2
-   auto vertical_profile = new IfcSchema::IfcAlignmentVertical(IfcParse::IfcGlobalId(), file.getSingle<IfcSchema::IfcOwnerHistory>(), boost::none, boost::none, boost::none, file.getSingle<IfcSchema::IfcLocalPlacement>(), file.getSingle<IfcSchema::IfcProductRepresentation>(), profile_segments);
-#endif
-
-   return vertical_profile;
-}
-
-bool CIfcAlignmentConverter::IsValidAlignment(Ifc4x1::IfcAlignment* pAlignment)
-{
-   auto axis = pAlignment->Axis()->as<Ifc4x1::IfcAlignmentCurve>();
-   auto horizontal = axis->Horizontal();
-   auto segments = horizontal->Segments();
-   auto nSegments = segments->size();
-   if (nSegments == 0)
-   {
-      // alignment doesn't have any segments
-      return false;
-   }
-   else if (nSegments == 1)
-   {
-      // our model doesn't support isolated transition segments
-      // transition curves must be adjacent to circular curves
-      auto segment = (*segments->begin());
-      auto transition = segment->CurveGeometry()->as<Ifc4x1::IfcTransitionCurveSegment2D>();
-      return (transition == nullptr ? true : false);
-   }
-   else if (nSegments == 2)
-   {
-      // our model doesn't support isolated transition segments
-      // transition curves must be adjacent to circular curves
-      // can't have two transitions adjacent to each other either
-      auto segment1 = (*segments->begin());
-      auto transition1 = segment1->CurveGeometry()->as<Ifc4x1::IfcTransitionCurveSegment2D>();
-
-      auto segment2 = (*segments->begin() + 1);
-      auto transition2 = segment2->CurveGeometry()->as<Ifc4x1::IfcTransitionCurveSegment2D>();
-      return (transition1 == nullptr || transition2 == nullptr ? true : false);
-   }
-   else
-   {
-      // walk the segments - if we run into a transition curve we have to check the following
-      // * transition is adjacent to a circular curve
-      // * common radius with circular curve and transition curve are equal
-      // * radius of transition curve away from circular curve is infinite
-      auto begin = segments->begin();
-      auto iter = begin;
-      auto end = segments->end();
-      for (; iter != end; iter++)
-      {
-         auto segment(*iter);
-         auto transition = segment->CurveGeometry()->as<Ifc4x1::IfcTransitionCurveSegment2D>();
-         if (transition)
-         {
-            Float64 start_radius = (transition->hasStartRadius() ? transition->StartRadius() : 0.0);
-            Float64 end_radius = (transition->hasEndRadius() ? transition->EndRadius() : 0.0);
-            if (!IsZero(start_radius) && !IsZero(end_radius))
-               return false; // one radius must be zero
-
-            if ((iter == begin && !IsZero(start_radius)) || (iter == end - 1 && !IsZero(end_radius)))
-               return false; // if starting with a transition curve, start radius must be zero or if ending with a transition curve, end radius must be zero
-
-            if (iter != begin && !IsZero(start_radius))
-            {
-               // transition starts with a radius so a circular curve must preceed this transition curve
-               auto arc = (*(iter - 1))->CurveGeometry()->as<Ifc4x1::IfcCircularArcSegment2D>();
-               if (!arc) return false; // previous is not an arc
-
-               if (!IsEqual(arc->Radius(), start_radius)) return false; // common radii must be equal
-
-               if (arc->IsCCW() != transition->IsStartRadiusCCW()) return false; // curves must be same direction
-            }
-
-            if (iter != end - 1 && !IsZero(end_radius))
-            {
-               // transition ends with a radius so a circular curve most come after this transition curve
-               auto arc = (*(iter + 1))->CurveGeometry()->as<Ifc4x1::IfcCircularArcSegment2D>();
-               if (!arc) return false; // previous is not an arc
-
-               if (!IsEqual(arc->Radius(), end_radius)) return false; // common radii must be equal
-
-               if (arc->IsCCW() != transition->IsEndRadiusCCW()) return false; // curves must be same direction
-            }
-         }
-      }
-   }
-
-
-   return true;
-}
-
-Ifc4x1::IfcAlignment* CIfcAlignmentConverter::GetAlignment(IfcParse::IfcFile& file)
-{
-   USES_CONVERSION;
-
-
-
-   //std::ostringstream os;
-   //os << "Schema: " << file.schema()->name() << std::endl;
-   //AfxMessageBox(A2T(os.str().c_str()));
-
-   Ifc4x1::IfcAlignment::list::ptr alignments = file.instances_by_type<Ifc4x1::IfcAlignment>();
-   std::vector<Ifc4x1::IfcAlignment*> valid_alignments;
-
-   for (auto alignment : *alignments)
-   {
-      if (IsValidAlignment(alignment))
-         valid_alignments.push_back(alignment);
-   }
-
-   if (valid_alignments.size() == 0)
-   {
-      AfxMessageBox(_T("File does not contain alignments that are compatible with this software."), MB_OK);
-   }
-   else
-   {
-      std::ostringstream os;
-      for (auto alignment : valid_alignments)
-      {
-         auto strLabel = (alignment->hasName() ? alignment->Name() : alignment->hasDescription() ? alignment->Description() : "Unnamed");
-         os << strLabel << std::endl;
-      }
-      int result = AfxChoose(_T("Select Alignment"), _T("Select alignment to import"), A2T(os.str().c_str()), 0, TRUE);
-      if (result < 0)
-         return nullptr; // dialog was canceled
-      else
-         return valid_alignments[result];
-   }
-
-
-   return nullptr;
-}

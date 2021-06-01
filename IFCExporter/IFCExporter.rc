@@ -90,7 +90,7 @@ END
 
 IDR_PGSUPERDATAIMPORTER REGISTRY                "PGSuperDataImporter.rgs"
 
-IDR_PGSUPEREXPORTER     REGISTRY                "PGSuperExporter.rgs"
+IDR_PGSUPERDATAEXPORTER     REGISTRY                "PGSuperDataExporter.rgs"
 
 
 /////////////////////////////////////////////////////////////////////////////

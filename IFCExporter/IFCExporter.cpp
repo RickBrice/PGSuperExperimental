@@ -38,7 +38,7 @@
 #include <WBFLGeometry_i.c>
 
 #include "PGSuperDataImporter.h"
-#include "PGSuperExporter.h"
+#include "PGSuperDataExporter.h"
 
 #include <IFace\Project.h>
 #include <IFace\VersionInfo.h>

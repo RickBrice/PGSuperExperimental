@@ -236,7 +236,7 @@
     </Midl>
     <ClCompile>
       <AdditionalIncludeDirectories>$(PGSUPERDIR)\Include\;$(PGSUPERDIR)\Include\$(Platform);$(PGSUPERDIR)\Include\Plugins;$(WBFLDIR)\Include;$(WBFLDIR)\Include\$(Platform);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>USE_IFC4X1;WIN32;NDEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -338,7 +338,7 @@
       <AdditionalOptions>/Zm500  %(AdditionalOptions)</AdditionalOptions>
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>$(PGSUPERDIR)\Include\;$(PGSUPERDIR)\Include\$(Platform);$(PGSUPERDIR)\Include\Plugins;$(WBFLDIR)\Include;$(WBFLDIR)\Include\$(Platform);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>USE_IFC4X1;WIN32;_DEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -478,7 +478,7 @@
     <ClCompile Include="IfcAlignmentConverterException.cpp" />
     <ClCompile Include="IFCExporter.cpp" />
     <ClCompile Include="PGSuperDataImporter.cpp" />
-    <ClCompile Include="PGSuperExporter.cpp" />
+    <ClCompile Include="PGSuperDataExporter.cpp" />
     <ClCompile Include="StdAfx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
@@ -491,14 +491,14 @@
   <ItemGroup>
     <None Include="IFCExtensions.def" />
     <None Include="PGSuperDataImporter.rgs" />
-    <None Include="PGSuperExporter.rgs" />
+    <None Include="PGSuperDataExporter.rgs" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="IfcAlignmentConverter.h" />
     <ClInclude Include="IfcAlignmentConverterException.h" />
     <ClInclude Include="IFCExporter.h" />
     <ClInclude Include="PGSuperDataImporter.h" />
-    <ClInclude Include="PGSuperExporter.h" />
+    <ClInclude Include="PGSuperDataExporter.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="StdAfx.h" />
   </ItemGroup>

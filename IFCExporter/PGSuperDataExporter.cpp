@@ -20,10 +20,10 @@
 // Bridge_Support@wsdot.wa.gov
 ///////////////////////////////////////////////////////////////////////
 
-// PGSuperExporter.cpp : Implementation of CPGSuperExporter
+// PGSuperDataExporter.cpp : Implementation of CPGSuperDataExporter
 #include "stdafx.h"
 #include "IFCExporter.h"
-#include "PGSuperExporter.h"
+#include "PGSuperDataExporter.h"
 #include "IfcAlignmentConverter.h"
 
 HRESULT CPGSuperDataExporter::FinalConstruct()
@@ -66,9 +66,14 @@ STDMETHODIMP CPGSuperDataExporter::Export(IBroker* pBroker)
 	if (dlg.DoModal() == IDOK)
 	{
 		CString file_path = dlg.GetPathName();
-      CIfcAlignmentConverter converter;
-      converter.ConvertToIfc(pBroker, file_path);
-	}		
+
+      int schema_type = AfxChoose(_T("Select Schema"), _T("Select Schema"), _T("4x1\n4x2\n4x3 rc1"));
+      if (0 <= schema_type)
+      {
+         CIfcAlignmentConverter converter;
+         converter.ConvertToIfc(pBroker, file_path, CIfcAlignmentConverter::SchemaType(schema_type));
+      }
+   }
 
    return S_OK;
 }
