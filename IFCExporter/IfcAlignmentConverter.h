@@ -81,8 +81,8 @@ private:
    {
       auto coordinates = pPoint->Coordinates();
       ATLASSERT(2 <= coordinates.size());
-      *pX = coordinates[0];
-      *pY = coordinates[1];
+      *pX = ::ConvertToSysUnits(coordinates[0],*m_pLengthUnit);
+      *pY = ::ConvertToSysUnits(coordinates[1],*m_pLengthUnit);
    }
 
    enum LastAlignmentType { Unknown, Line, Curve } m_LastAlignmentType;

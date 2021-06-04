@@ -883,7 +883,10 @@ HRESULT CIfcAlignmentConverter::ConvertToPGSuper(IBroker* pBroker, CString& strF
    {
       strNotes += note + _T("\n");
    }
-   AfxMessageBox(strNotes.c_str(), MB_OK);
+   if (0 < strNotes.size())
+   {
+      AfxMessageBox(strNotes.c_str(), MB_OK);
+   }
 
    if (bResult)
    {
@@ -1260,7 +1263,7 @@ Float64 CIfcAlignmentConverter::OnLine(Float64 startStation, typename Segment* p
    Float64 sx, sy;
    GetPoint<Schema>(pLine->StartPoint(), &sx, &sy);
 
-   Float64 length = pLine->SegmentLength();
+   Float64 length = ::ConvertToSysUnits(pLine->SegmentLength(),*m_pLengthUnit);
    Float64 startDirection = pLine->StartDirection();
    return OnLine(sx, sy, startStation, startDirection, length);
 }
@@ -1311,7 +1314,7 @@ Float64 CIfcAlignmentConverter::OnCurve(Float64 startStation, typename SpiralTyp
 {
    ATLASSERT(pCurve != nullptr);
 
-   Float64 radius = pCurve->Radius();
+   Float64 radius = ::ConvertToSysUnits(pCurve->Radius(), *m_pLengthUnit);
 
    // Get all the construction points
    CComPtr<IPoint2d> pntEntryStart, pntEntryPI, pntEntryEnd;
@@ -1556,8 +1559,8 @@ void CIfcAlignmentConverter::GetCurvePoints(typename CurveType* pCurve, IPoint2d
 {
    auto pStart = pCurve->StartPoint();
    auto bkTangentBrg = pCurve->StartDirection();
-   auto L = pCurve->SegmentLength();
-   auto R = pCurve->Radius();
+   auto L = ::ConvertToSysUnits(pCurve->SegmentLength(),*m_pLengthUnit);
+   auto R = ::ConvertToSysUnits(pCurve->Radius(),*m_pLengthUnit);
 
    Float64 delta = L / R;
    Float64 T = R*tan(delta/2);
@@ -1596,8 +1599,8 @@ void CIfcAlignmentConverter::GetSpiralPoints(typename SpiralType* pSpiral, IPoin
 {
    auto pStart = pSpiral->StartPoint();
    auto bkTangentBrg = pSpiral->StartDirection();
-   auto L = pSpiral->SegmentLength();
-   auto R = (pSpiral->hasStartRadius() ? pSpiral->StartRadius() : pSpiral->EndRadius());
+   auto L = ::ConvertToSysUnits(pSpiral->SegmentLength(),*m_pLengthUnit);
+   auto R = ::ConvertToSysUnits((pSpiral->hasStartRadius() ? pSpiral->StartRadius() : pSpiral->EndRadius()),*m_pLengthUnit);
    bool bIsCCW = (pSpiral->hasStartRadius() ? pSpiral->IsStartRadiusCCW() : pSpiral->IsEndRadiusCCW());
 
    Float64 sx, sy;
