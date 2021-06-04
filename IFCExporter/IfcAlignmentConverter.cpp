@@ -525,21 +525,56 @@ void CIfcAlignmentConverter::InitUnits(IfcParse::IfcFile& file)
             auto unit_component = measure_with_unit->UnitComponent()->as<Schema::IfcSIUnit>();
             ATLASSERT(unit_component->Name() == Schema::IfcSIUnitName::IfcSIUnitName_METRE);
             ATLASSERT(unit_component->hasPrefix() == false); // not dealing with conversion factors to anything but meter
-            auto value_component = measure_with_unit->ValueComponent()->as<Schema::IfcReal>();
-            ATLASSERT(value_component); // not dealing with anything but simple conversion factors
-            if (IsEqual((Float64)(*value_component), unitMeasure::Feet.GetConvFactor()))
+
+            Float64 conversion_factor;
+            try
+            {
+               auto value_component = measure_with_unit->ValueComponent()->as<Schema::IfcLengthMeasure>();
+               ATLASSERT(value_component); // not dealing with anything but simple conversion factors
+               conversion_factor = 1 / (*value_component);
+            }
+            catch (IfcParse::IfcInvalidTokenException& e)
+            {
+               // Was expecting something like 
+               // #15 = IFCMEASUREWITHUNIT(IFCLENGTHMEASURE(3.28083333333333), #16);
+               // where the expected token is IFCLENGTHMEASURE, but instead found something like
+               // #15=IFCMEASUREWITHUNIT(3.28083333333333,#16);
+               // we'll just get the value and keep going
+               TRACE(e.what());
+               Argument* pArgument = measure_with_unit->get("ValueComponent");
+               ATLASSERT(pArgument->type() == IfcUtil::Argument_DOUBLE);
+               double value = double(*pArgument);
+               conversion_factor = 1 / value;
+            }
+
+            if (IsEqual(conversion_factor, unitMeasure::Feet.GetConvFactor()))
             {
                m_pLengthUnit = &unitMeasure::Feet;
             }
-            else if (IsEqual((Float64)(*value_component), unitMeasure::Inch.GetConvFactor()))
+            else if (IsEqual(conversion_factor, unitMeasure::USSurveyFoot.GetConvFactor()))
+            {
+               m_pLengthUnit = &unitMeasure::USSurveyFoot;
+            }
+            else if (IsEqual(conversion_factor, unitMeasure::Inch.GetConvFactor()))
             {
                m_pLengthUnit = &unitMeasure::Inch;
             }
-            else if (IsEqual((Float64)(*value_component), unitMeasure::Mile.GetConvFactor()))
+            else if (IsEqual(conversion_factor, unitMeasure::Mile.GetConvFactor()))
             {
                m_pLengthUnit = &unitMeasure::Mile;
             }
-
+            else if (IsEqual(conversion_factor, unitMeasure::Yard.GetConvFactor()))
+            {
+               m_pLengthUnit = &unitMeasure::Yard;
+            }
+            else if (IsEqual(conversion_factor, unitMeasure::USSurveyYard.GetConvFactor()))
+            {
+               m_pLengthUnit = &unitMeasure::USSurveyYard;
+            }
+            else
+            {
+               ATLASSERT(false); // we don't have a unit of measure for this
+            }
          }
          break;
       }
