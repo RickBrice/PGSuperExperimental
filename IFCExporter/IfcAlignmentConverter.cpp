@@ -882,6 +882,15 @@ bool CIfcAlignmentConverter::ConvertToPGSuper(IfcParse::IfcFile& file, Alignment
    *pProfileData = m_ProfileData;
 
 #pragma Reminder("WORKING HERE - Roadway Section Data")
+   // this is dummy data
+   RoadwaySectionTemplate roadway_template;
+   roadway_template.LeftSlope = -0.02;
+   roadway_template.RightSlope = -0.02;
+   roadway_template.Station = 0;
+   m_RoadwaySectionData.NumberOfSegmentsPerSection = 2;
+   m_RoadwaySectionData.ControllingRidgePointIdx = 1;
+   m_RoadwaySectionData.RoadwaySectionTemplates.push_back(roadway_template);
+   *pRoadwaySectionData = m_RoadwaySectionData;
 
    return true;
 }
