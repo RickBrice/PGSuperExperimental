@@ -3,6 +3,7 @@
 #include <IFace\Project.h>
 #include <IFace\VersionInfo.h>
 #include <IFace\Alignment.h>
+#include <IFace\DocumentType.h>
 
 
 #include "IfcAlignmentConverter.h"
@@ -449,6 +450,7 @@ typename Schema::IfcAlignmentVertical* BuildProfile(IBroker* pBroker, IfcHierarc
 CIfcAlignmentConverter::CIfcAlignmentConverter(void)
 {
    m_pLengthUnit = nullptr;
+   m_pAngleUnit = nullptr;
 
    m_bAlignmentStarted = false;
    m_ProfileState = PROFILE_NOT_STARTED;
@@ -474,7 +476,6 @@ void CIfcAlignmentConverter::InitUnits(IfcParse::IfcFile& file)
       m_Precision = geometric_representation_context->Precision();
    }
 
-
 #pragma Reminder("WORKING HERE - UNITS - THERE ARE MANY CASES THIS DOESN'T DEAL WITH")
    auto unit_assignment_instances = file.instances_by_type<Schema::IfcUnitAssignment>();
    ATLASSERT(unit_assignment_instances->size() == 1);
@@ -488,95 +489,146 @@ void CIfcAlignmentConverter::InitUnits(IfcParse::IfcFile& file)
       auto conversion_based_unit = unit->as<Schema::IfcConversionBasedUnit>();
       auto conversion_based_unit_with_offset = unit->as<Schema::IfcConversionBasedUnitWithOffset>();
 
-      if (si_unit && si_unit->Name() == Schema::IfcSIUnitName::IfcSIUnitName_METRE)
+      if (si_unit)
       {
-         if (si_unit->hasPrefix())
+         if (si_unit->Name() == Schema::IfcSIUnitName::IfcSIUnitName_METRE)
          {
-            switch (si_unit->Prefix())
+            if (si_unit->hasPrefix())
             {
-            case Schema::IfcSIPrefix::IfcSIPrefix_KILO:
-               m_pLengthUnit = &unitMeasure::Kilometer;
-               break;
+               switch (si_unit->Prefix())
+               {
+               case Schema::IfcSIPrefix::IfcSIPrefix_KILO:
+                  m_pLengthUnit = &unitMeasure::Kilometer;
+                  break;
 
-            case Schema::IfcSIPrefix::IfcSIPrefix_CENTI:
-               m_pLengthUnit = &unitMeasure::Centimeter;
-               break;
+               case Schema::IfcSIPrefix::IfcSIPrefix_CENTI:
+                  m_pLengthUnit = &unitMeasure::Centimeter;
+                  break;
 
-            case Schema::IfcSIPrefix::IfcSIPrefix_MILLI:
-               m_pLengthUnit = &unitMeasure::Millimeter;
-               break;
+               case Schema::IfcSIPrefix::IfcSIPrefix_MILLI:
+                  m_pLengthUnit = &unitMeasure::Millimeter;
+                  break;
 
-            default:
-               ATLASSERT(false); // unit prefix isn't supported
-            }
-         }
-         else
-         {
-            m_pLengthUnit = &unitMeasure::Meter;
-         }
-         break;
-      }
-
-      if (conversion_based_unit && conversion_based_unit->UnitType() == Schema::IfcUnitEnum::IfcUnit_LENGTHUNIT)
-      {
-         if (conversion_based_unit->UnitType() == Schema::IfcUnitEnum::IfcUnit_LENGTHUNIT)
-         {
-            auto measure_with_unit = conversion_based_unit->ConversionFactor();
-            auto unit_component = measure_with_unit->UnitComponent()->as<Schema::IfcSIUnit>();
-            ATLASSERT(unit_component->Name() == Schema::IfcSIUnitName::IfcSIUnitName_METRE);
-            ATLASSERT(unit_component->hasPrefix() == false); // not dealing with conversion factors to anything but meter
-
-            Float64 conversion_factor;
-            try
-            {
-               auto value_component = measure_with_unit->ValueComponent()->as<Schema::IfcLengthMeasure>();
-               ATLASSERT(value_component); // not dealing with anything but simple conversion factors
-               conversion_factor = 1 / (*value_component);
-            }
-            catch (IfcParse::IfcInvalidTokenException& e)
-            {
-               // Was expecting something like 
-               // #15 = IFCMEASUREWITHUNIT(IFCLENGTHMEASURE(3.28083333333333), #16);
-               // where the expected token is IFCLENGTHMEASURE, but instead found something like
-               // #15=IFCMEASUREWITHUNIT(3.28083333333333,#16);
-               // we'll just get the value and keep going
-               TRACE(e.what());
-               Argument* pArgument = measure_with_unit->get("ValueComponent");
-               ATLASSERT(pArgument->type() == IfcUtil::Argument_DOUBLE);
-               double value = double(*pArgument);
-               conversion_factor = 1 / value;
-            }
-
-            if (IsEqual(conversion_factor, unitMeasure::Feet.GetConvFactor()))
-            {
-               m_pLengthUnit = &unitMeasure::Feet;
-            }
-            else if (IsEqual(conversion_factor, unitMeasure::USSurveyFoot.GetConvFactor()))
-            {
-               m_pLengthUnit = &unitMeasure::USSurveyFoot;
-            }
-            else if (IsEqual(conversion_factor, unitMeasure::Inch.GetConvFactor()))
-            {
-               m_pLengthUnit = &unitMeasure::Inch;
-            }
-            else if (IsEqual(conversion_factor, unitMeasure::Mile.GetConvFactor()))
-            {
-               m_pLengthUnit = &unitMeasure::Mile;
-            }
-            else if (IsEqual(conversion_factor, unitMeasure::Yard.GetConvFactor()))
-            {
-               m_pLengthUnit = &unitMeasure::Yard;
-            }
-            else if (IsEqual(conversion_factor, unitMeasure::USSurveyYard.GetConvFactor()))
-            {
-               m_pLengthUnit = &unitMeasure::USSurveyYard;
+               default:
+                  ATLASSERT(false); // unit prefix isn't supported
+               }
             }
             else
             {
-               ATLASSERT(false); // we don't have a unit of measure for this
+               m_pLengthUnit = &unitMeasure::Meter;
             }
+            continue;
          }
-         break;
+
+         if (si_unit->Name() == Schema::IfcSIUnitName::IfcSIUnitName_RADIAN)
+         {
+            ATLASSERT(!si_unit->hasPrefix()); // not expeciting anything like Kilo-radians
+            m_pAngleUnit = &unitMeasure::Radian;
+            continue;
+         }
+      }
+
+      if (conversion_based_unit)
+      {
+         if (conversion_based_unit->UnitType() == Schema::IfcUnitEnum::IfcUnit_LENGTHUNIT)
+         {
+            if (conversion_based_unit->UnitType() == Schema::IfcUnitEnum::IfcUnit_PLANEANGLEUNIT)
+            {
+               auto measure_with_unit = conversion_based_unit->ConversionFactor();
+               auto unit_component = measure_with_unit->UnitComponent()->as<Schema::IfcSIUnit>();
+               ATLASSERT(unit_component->Name() == Schema::IfcSIUnitName::IfcSIUnitName_RADIAN);
+               ATLASSERT(unit_component->hasPrefix() == false); // not dealing with conversion factors to anything but meter
+               Float64 conversion_factor;
+               try
+               {
+                  auto value_component = measure_with_unit->ValueComponent();
+                  ATLASSERT(value_component); // not dealing with anything but simple conversion factors
+                                              //auto value = *(value_component->as<Schema::IfcLengthMeasure>()); // as<> returns nullptr if the type is different so deferencing could lead to crash
+                                              //auto value = *(value_component->as<Schema::IfcRatio>()); // as<> returns nullptr if the type is different so deferencing could lead to crash
+                  auto value = static_cast<Float64>(*value_component->data().getArgument(0));
+                  conversion_factor = 1 / (value);
+               }
+               catch (IfcParse::IfcInvalidTokenException& e)
+               {
+                  // Was expecting something like 
+                  // #15 = IFCMEASUREWITHUNIT(IFCLENGTHMEASURE(3.28083333333333), #16);
+                  // where the expected token is IFCLENGTHMEASURE, but instead found something like
+                  // #15=IFCMEASUREWITHUNIT(3.28083333333333,#16);
+                  // we'll just get the value and keep going
+                  TRACE(e.what());
+                  Argument* pArgument = measure_with_unit->get("ValueComponent");
+                  ATLASSERT(pArgument->type() == IfcUtil::Argument_DOUBLE);
+                  double value = double(*pArgument);
+                  conversion_factor = 1 / value;
+               }
+
+               if (IsEqual(conversion_factor, unitMeasure::Degree.GetConvFactor()))
+               {
+                  m_pAngleUnit = &unitMeasure::Degree;
+               }
+            }
+            else if (conversion_based_unit->UnitType() == Schema::IfcUnitEnum::IfcUnit_LENGTHUNIT)
+            {
+               auto measure_with_unit = conversion_based_unit->ConversionFactor();
+               auto unit_component = measure_with_unit->UnitComponent()->as<Schema::IfcSIUnit>();
+               ATLASSERT(unit_component->Name() == Schema::IfcSIUnitName::IfcSIUnitName_METRE);
+               ATLASSERT(unit_component->hasPrefix() == false); // not dealing with conversion factors to anything but meter
+
+               Float64 conversion_factor;
+               try
+               {
+                  auto value_component = measure_with_unit->ValueComponent();
+                  ATLASSERT(value_component); // not dealing with anything but simple conversion factors
+                  //auto value = *(value_component->as<Schema::IfcLengthMeasure>()); // as<> returns nullptr if the type is different so deferencing could lead to crash
+                  //auto value = *(value_component->as<Schema::IfcRatio>()); // as<> returns nullptr if the type is different so deferencing could lead to crash
+                  auto value = static_cast<Float64>(*value_component->data().getArgument(0));
+                  conversion_factor = 1 / (value);
+               }
+               catch (IfcParse::IfcInvalidTokenException& e)
+               {
+                  // Was expecting something like 
+                  // #15 = IFCMEASUREWITHUNIT(IFCLENGTHMEASURE(3.28083333333333), #16);
+                  // where the expected token is IFCLENGTHMEASURE, but instead found something like
+                  // #15=IFCMEASUREWITHUNIT(3.28083333333333,#16);
+                  // we'll just get the value and keep going
+                  TRACE(e.what());
+                  Argument* pArgument = measure_with_unit->get("ValueComponent");
+                  ATLASSERT(pArgument->type() == IfcUtil::Argument_DOUBLE);
+                  double value = double(*pArgument);
+                  conversion_factor = 1 / value;
+               }
+
+               if (IsEqual(conversion_factor, unitMeasure::Feet.GetConvFactor()))
+               {
+                  m_pLengthUnit = &unitMeasure::Feet;
+               }
+               else if (IsEqual(conversion_factor, unitMeasure::USSurveyFoot.GetConvFactor()))
+               {
+                  m_pLengthUnit = &unitMeasure::USSurveyFoot;
+               }
+               else if (IsEqual(conversion_factor, unitMeasure::Inch.GetConvFactor()))
+               {
+                  m_pLengthUnit = &unitMeasure::Inch;
+               }
+               else if (IsEqual(conversion_factor, unitMeasure::Mile.GetConvFactor()))
+               {
+                  m_pLengthUnit = &unitMeasure::Mile;
+               }
+               else if (IsEqual(conversion_factor, unitMeasure::Yard.GetConvFactor()))
+               {
+                  m_pLengthUnit = &unitMeasure::Yard;
+               }
+               else if (IsEqual(conversion_factor, unitMeasure::USSurveyYard.GetConvFactor()))
+               {
+                  m_pLengthUnit = &unitMeasure::USSurveyYard;
+               }
+               else
+               {
+                  ATLASSERT(false); // we don't have a unit of measure for this
+               }
+            }
+            continue;
+         }
       }
    }
 }
@@ -600,8 +652,31 @@ void CIfcAlignmentConverter::ConvertToIfc(IBroker* pBroker, const CString& strFi
 {
    USES_CONVERSION;
 
+   int nPos = strFilePath.ReverseFind('\\');
+   CString strFileName(strFilePath);
+   if (nPos != -1)
+   {
+      strFileName = strFileName.Right(strFilePath.GetLength() - nPos - 1);
+   }
+
+   GET_IFACE2(pBroker, IProjectProperties, pProjectProperties);
+   GET_IFACE2(pBroker, IVersionInfo, pVersionInfo);
+   GET_IFACE2(pBroker, IDocumentType, pDocType);
    IfcHierarchyHelper<Schema> file;
-   file.header().file_name().name(T2A(strFilePath));
+
+   // See https://standards.buildingsmart.org/documents/Implementation/ImplementationGuide_IFCHeaderData_Version_1.0.2.pdf for details about required information
+   file.header().file_name().name(T2A(strFileName)); // filename without path
+   std::vector<std::string> authors;
+   authors.push_back(T2A(pProjectProperties->GetEngineer()));
+   file.header().file_name().author(authors);
+   std::vector<std::string> organizations;
+   organizations.push_back(T2A(pProjectProperties->GetCompany()));
+   file.header().file_name().organization(organizations);
+   //file.header().file_name().preprocessor_version(); // this is info about the toolkit we are using which is IfcOpenShell... this field is filled in by default
+
+   std::ostringstream os;
+   os << "BridgeLink:" << (pDocType->IsPGSuperDocument() ? "PGSuper" : "PGSplice") << " Version " << T2A(pVersionInfo->GetVersion(true)) << std::endl;
+   file.header().file_name().originating_system(os.str());
 
    //auto project = file.addProject(); // Don't like the default units in IfcOpenShell so we have do build our own
    /////////////////////////// The following is copied from addProject and tweeked
@@ -627,14 +702,13 @@ void CIfcAlignmentConverter::ConvertToIfc(IBroker* pBroker, const CString& strFi
 
    auto site = file.addSite(project);
 
-   GET_IFACE2(pBroker, IProjectProperties, pProjectProperties);
    project->setName(T2A(pProjectProperties->GetBridgeName()));
    site->setName(T2A(pProjectProperties->GetBridgeName()));
 
    auto owner_history = file.getSingle<Schema::IfcOwnerHistory>();
-   GET_IFACE2(pBroker, IVersionInfo, pVersionInfo);
-   owner_history->OwningApplication()->setApplicationFullName("BridgeLink::PGSuper");
-   owner_history->OwningApplication()->setApplicationIdentifier("PGSuper");
+#pragma Reminder("WORKING HERE - Need to set up all owner history information")
+   owner_history->OwningApplication()->setApplicationFullName(pDocType->IsPGSuperDocument() ? "BridgeLink:PGSuper" : "BridgeLink:PGSplice");
+   owner_history->OwningApplication()->setApplicationIdentifier(pDocType->IsPGSuperDocument() ? "PGSuper" : "PGSplice");
    owner_history->OwningApplication()->setVersion(T2A(pVersionInfo->GetVersion(true)));
    owner_history->OwningApplication()->ApplicationDeveloper()->setIdentification("Washington State Department of Transportation, Bridge and Structures Office");
    owner_history->OwningApplication()->ApplicationDeveloper()->setName("Richard Brice, PE");
@@ -926,7 +1000,8 @@ bool CIfcAlignmentConverter::ConvertToPGSuper(IfcParse::IfcFile& file, Alignment
    roadway_template.RightSlope = -0.02;
    roadway_template.Station = 0;
    m_RoadwaySectionData.NumberOfSegmentsPerSection = 2;
-   m_RoadwaySectionData.ControllingRidgePointIdx = 1;
+   m_RoadwaySectionData.AlignmentPointIdx = 1;
+   m_RoadwaySectionData.ProfileGradePointIdx = 1;
    m_RoadwaySectionData.RoadwaySectionTemplates.push_back(roadway_template);
    *pRoadwaySectionData = m_RoadwaySectionData;
 
@@ -978,7 +1053,10 @@ typename Schema::IfcAlignment* CIfcAlignmentConverter::GetAlignment(IfcParse::If
 template <typename Schema>
 void CIfcAlignmentConverter::LoadAlignment(typename Schema::IfcAlignment* pAlignment)
 {
+   USES_CONVERSION;
    m_bAlignmentStarted = false; // the alignment datablock has not yet been started
+   
+   m_AlignmentData.Name = A2T(pAlignment->hasName() ? pAlignment->Name().c_str() : pAlignment->hasDescription() ? pAlignment->Description().c_str() : "");
 
    // initalize the alignment data
    m_AlignmentData.Direction = 0.00;
@@ -1264,7 +1342,7 @@ Float64 CIfcAlignmentConverter::OnLine(Float64 startStation, typename Segment* p
    GetPoint<Schema>(pLine->StartPoint(), &sx, &sy);
 
    Float64 length = ::ConvertToSysUnits(pLine->SegmentLength(),*m_pLengthUnit);
-   Float64 startDirection = pLine->StartDirection();
+   Float64 startDirection = ::ConvertToSysUnits(pLine->StartDirection(), *m_pAngleUnit);;
    return OnLine(sx, sy, startStation, startDirection, length);
 }
 
@@ -1558,7 +1636,7 @@ template <typename Schema, typename CurveType>
 void CIfcAlignmentConverter::GetCurvePoints(typename CurveType* pCurve, IPoint2d** ppStart, IPoint2d** ppPI, IPoint2d** ppEnd, IPoint2d** ppCenter)
 {
    auto pStart = pCurve->StartPoint();
-   auto bkTangentBrg = pCurve->StartDirection();
+   auto bkTangentBrg = ::ConvertToSysUnits(pCurve->StartDirection(), *m_pAngleUnit);
    auto L = ::ConvertToSysUnits(pCurve->SegmentLength(),*m_pLengthUnit);
    auto R = ::ConvertToSysUnits(pCurve->Radius(),*m_pLengthUnit);
 
@@ -1598,7 +1676,7 @@ template <typename Schema,typename SpiralType>
 void CIfcAlignmentConverter::GetSpiralPoints(typename SpiralType* pSpiral, IPoint2d** ppStart, IPoint2d** ppPI, IPoint2d** ppEnd)
 {
    auto pStart = pSpiral->StartPoint();
-   auto bkTangentBrg = pSpiral->StartDirection();
+   auto bkTangentBrg = ::ConvertToSysUnits(pSpiral->StartDirection(), *m_pAngleUnit);
    auto L = ::ConvertToSysUnits(pSpiral->SegmentLength(),*m_pLengthUnit);
    auto R = ::ConvertToSysUnits((pSpiral->hasStartRadius() ? pSpiral->StartRadius() : pSpiral->EndRadius()),*m_pLengthUnit);
    bool bIsCCW = (pSpiral->hasStartRadius() ? pSpiral->IsStartRadiusCCW() : pSpiral->IsEndRadiusCCW());

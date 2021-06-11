@@ -43,6 +43,7 @@
 #include <IFace\Project.h>
 #include <IFace\VersionInfo.h>
 #include <IFace\Alignment.h>
+#include <IFace\DocumentType.h>
 
 CComModule _Module;
 

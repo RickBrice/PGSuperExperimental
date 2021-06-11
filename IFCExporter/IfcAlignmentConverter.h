@@ -42,6 +42,7 @@ public:
 private:
    static Float64 m_Precision;
    const unitLength* m_pLengthUnit;
+   const unitAngle* m_pAngleUnit;
    std::vector<std::_tstring> m_Notes;
    CComPtr<ICogoEngine> m_CogoEngine;
    CComPtr<IGeomUtil2d> m_GeomUtil;
