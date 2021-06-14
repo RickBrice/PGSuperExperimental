@@ -732,7 +732,9 @@ void CIfcAlignmentConverter::ConvertToIfc(IBroker* pBroker, const CString& strFi
    auto axis = new Schema::IfcAlignmentCurve(horizontal_alignment, vertical_profile, boost::none);
 
    // create an alignment... this is the linear positioning element. it could be an alignment curve (as used above) or IfcOffsetCurveByDistances or IfcPolyline
-   auto alignment = new Schema::IfcAlignment(IfcParse::IfcGlobalId(), owner_history, std::string("Alignment"), boost::none, boost::none, local_placement, file.getSingle<Schema::IfcProductRepresentation>(), axis, boost::none);
+   GET_IFACE2(pBroker, IRoadwayData, pRoadwayData);
+   std::string strAlignmentName(T2A(pRoadwayData->GetAlignmentData2().Name.c_str()));
+   auto alignment = new Schema::IfcAlignment(IfcParse::IfcGlobalId(), owner_history, strAlignmentName, boost::none, boost::none, local_placement, file.getSingle<Schema::IfcProductRepresentation>(), axis, boost::none);
    file.addEntity(alignment);
 
    boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcProduct>> related_elements(new IfcTemplatedEntityList<Schema::IfcProduct>());
