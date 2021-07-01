@@ -30,27 +30,27 @@
     <ProjectGuid>{CA52BC14-3E56-4A3E-AB47-DCDD6FC38194}</ProjectGuid>
     <RootNamespace>IFCExporter</RootNamespace>
     <Keyword>AtlProj</Keyword>
-    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
-    <ProjectName>IFCExtensions</ProjectName>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>IfcExtensions</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v140</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <UseOfMfc>Dynamic</UseOfMfc>
     <UseOfAtl>Dynamic</UseOfAtl>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v140</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <UseOfMfc>Dynamic</UseOfMfc>
     <UseOfAtl>Dynamic</UseOfAtl>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v140</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <UseOfMfc>Dynamic</UseOfMfc>
     <UseOfAtl>Dynamic</UseOfAtl>
     <CharacterSet>Unicode</CharacterSet>
@@ -58,21 +58,21 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profile|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v140</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <UseOfMfc>Dynamic</UseOfMfc>
     <UseOfAtl>Dynamic</UseOfAtl>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v140</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <UseOfMfc>Dynamic</UseOfMfc>
     <UseOfAtl>Dynamic</UseOfAtl>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v140</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <UseOfMfc>Dynamic</UseOfMfc>
     <UseOfAtl>Dynamic</UseOfAtl>
     <CharacterSet>Unicode</CharacterSet>
@@ -286,7 +286,6 @@
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>$(PGSUPERDIR)\Include\;$(PGSUPERDIR)\Include\$(Platform);$(PGSUPERDIR)\Include\Plugins;$(WBFLDIR)\Include;$(WBFLDIR)\Include\$(Platform);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
@@ -339,7 +338,6 @@
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>$(PGSUPERDIR)\Include\;$(PGSUPERDIR)\Include\$(Platform);$(PGSUPERDIR)\Include\Plugins;$(WBFLDIR)\Include;$(WBFLDIR)\Include\$(Platform);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
@@ -476,7 +474,8 @@
   <ItemGroup>
     <ClCompile Include="IfcAlignmentConverter.cpp" />
     <ClCompile Include="IfcAlignmentConverterException.cpp" />
-    <ClCompile Include="IFCExporter.cpp" />
+    <ClCompile Include="IfcExtensions.cpp" />
+    <ClCompile Include="IfcModelBuilder.cpp" />
     <ClCompile Include="PGSuperDataImporter.cpp" />
     <ClCompile Include="PGSuperDataExporter.cpp" />
     <ClCompile Include="StdAfx.cpp">
@@ -489,25 +488,25 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="IFCExtensions.def" />
+    <None Include="IfcExtensions.def" />
     <None Include="PGSuperDataImporter.rgs" />
     <None Include="PGSuperDataExporter.rgs" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="IfcAlignmentConverter.h" />
     <ClInclude Include="IfcAlignmentConverterException.h" />
-    <ClInclude Include="IFCExporter.h" />
+    <ClInclude Include="IfcExtensions.h" />
+    <ClInclude Include="IfcModelBuilder.h" />
     <ClInclude Include="PGSuperDataImporter.h" />
     <ClInclude Include="PGSuperDataExporter.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="StdAfx.h" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="IFCExporter.bmp" />
-    <Image Include="importer.ico" />
+    <Image Include="IfcExtensions.bmp" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="IFCExporter.rc" />
+    <ResourceCompile Include="IfcExtensions.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

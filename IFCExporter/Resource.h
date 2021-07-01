@@ -8,8 +8,7 @@
 #define IDR_PGSUPERDATAIMPORTER         104
 #define IDR_PGSUPERDATAEXPORTER             105
 #define IDR_PGSPLICEPROJECTIMPORTER     106
-#define IDI_IMPORTER                    204
-#define IDB_IEPLUGIN                    205
+#define IDB_BSI                    205
 
 // Next default values for new objects
 // 

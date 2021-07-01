@@ -31,7 +31,7 @@
 #include "resource.h"
 #include <initguid.h>
 #include <Plugins\PGSuperIEPlugin.h>
-#include "IFCExporter.h"
+#include "IfcExtensions.h"
 #include "PGSuperCatCom.h"
 #include <WBFLCore_i.c>
 #include <WBFLCogo_i.c>
@@ -44,6 +44,16 @@
 #include <IFace\VersionInfo.h>
 #include <IFace\Alignment.h>
 #include <IFace\DocumentType.h>
+
+#include <IFace\Bridge.h>
+#include <IFace\Intervals.h>
+
+
+#if defined _DEBUG
+#pragma comment(lib,"F:/IfcOpenShell/_build-vs2015-x64/Debug/IfcParse.lib")
+#else
+#pragma comment(lib,"F:/IfcOpenShell/_build-vs2015-x64/Release/IfcParse.lib")
+#endif
 
 CComModule _Module;
 
@@ -120,6 +130,8 @@ void RegisterPlugins(bool bRegister)
 
    // PGSplice
    //sysComCatMgr::RegWithCategory(CLSID_PGSpliceProjectImporter, CATID_PGSpliceProjectImporter, bRegister);
+   sysComCatMgr::RegWithCategory(CLSID_PGSuperDataImporter, CATID_PGSpliceDataImporter, bRegister);
+   sysComCatMgr::RegWithCategory(CLSID_PGSuperDataExporter, CATID_PGSpliceDataExporter, bRegister);
 }
 
 /////////////////////////////////////////////////////////////////////////////

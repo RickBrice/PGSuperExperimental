@@ -98,17 +98,13 @@ IDR_PGSUPERDATAEXPORTER     REGISTRY                "PGSuperDataExporter.rgs"
 // Icon
 //
 
-// Icon with lowest ID value placed first to ensure application icon
-// remains consistent on all systems.
-IDI_IMPORTER            ICON                    "importer.ico"
-
 
 /////////////////////////////////////////////////////////////////////////////
 //
 // Bitmap
 //
 
-IDB_IEPLUGIN            BITMAP                  "IFCExporter.bmp"
+IDB_BSI            BITMAP                  "IfcExtensions.bmp"
 
 
 /////////////////////////////////////////////////////////////////////////////

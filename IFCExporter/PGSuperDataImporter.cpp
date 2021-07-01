@@ -22,7 +22,7 @@
 
 // PGSuperDataImporter.cpp : Implementation of CPGSuperDataImporter
 #include "stdafx.h"
-#include "IFCExporter.h"
+#include "IfcExtensions.h"
 #include "PGSuperDataImporter.h"
 #include <EAF\EAFAutoProgress.h>
 #include <IFace\Project.h>
@@ -30,6 +30,12 @@
 
 /////////////////////////////////////////////////////////////////////////////
 // CPGSuperDataImporter
+HRESULT CPGSuperDataImporter::FinalConstruct()
+{
+   AFX_MANAGE_STATE(AfxGetStaticModuleState());
+   VERIFY(m_Bitmap.LoadBitmap(IDB_BSI));
+   return S_OK;
+}
 STDMETHODIMP CPGSuperDataImporter::Init(UINT nCmdID)
 {
    return S_OK;
@@ -43,7 +49,7 @@ STDMETHODIMP CPGSuperDataImporter::GetMenuText(BSTR*  bstrText) const
 
 STDMETHODIMP CPGSuperDataImporter::GetBitmapHandle(HBITMAP* phBmp) const
 {
-   *phBmp = nullptr;
+   *phBmp = m_Bitmap;
    return S_OK;
 }
 

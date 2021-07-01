@@ -22,14 +22,14 @@
 
 // PGSuperDataExporter.cpp : Implementation of CPGSuperDataExporter
 #include "stdafx.h"
-#include "IFCExporter.h"
+#include "IfcExtensions.h"
 #include "PGSuperDataExporter.h"
-#include "IfcAlignmentConverter.h"
+#include "IfcModelBuilder.h"
 
 HRESULT CPGSuperDataExporter::FinalConstruct()
 {
    AFX_MANAGE_STATE(AfxGetStaticModuleState());
-   VERIFY(m_Bitmap.LoadBitmap(IDB_IEPLUGIN));
+   VERIFY(m_Bitmap.LoadBitmap(IDB_BSI));
    return S_OK;
 }
 
@@ -67,12 +67,9 @@ STDMETHODIMP CPGSuperDataExporter::Export(IBroker* pBroker)
 	{
 		CString file_path = dlg.GetPathName();
 
-      int schema_type = AfxChoose(_T("Select Schema"), _T("Select Schema"), _T("4x1\n4x2\n4x3 rc1"));
-      if (0 <= schema_type)
-      {
-         CIfcAlignmentConverter converter;
-         converter.ConvertToIfc(pBroker, file_path, CIfcAlignmentConverter::SchemaType(schema_type));
-      }
+       CIfcModelBuilder builder;
+       builder.BuildModel(pBroker, file_path, CIfcModelBuilder::Schema_4x3_rc3);
+       //builder.BuildModel(pBroker, file_path, CIfcModelBuilder::Schema_4x3_rc4);
    }
 
    return S_OK;

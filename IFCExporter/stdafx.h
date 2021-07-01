@@ -36,3 +36,11 @@ extern CComModule _Module;
 #include <atlcom.h>
 
 #include <AgentTools.h>
+
+#include "F:/IfcOpenShell/src/ifcparse/IfcHierarchyHelper.h"
+#include "F:/IfcOpenShell/src/ifcparse/Ifc4x1.h"
+#include "F:/IfcOpenShell/src/ifcparse/Ifc4x2.h"
+#include "F:/IfcOpenShell/src/ifcparse/Ifc4x3_rc1.h"
+#include "F:/IfcOpenShell/src/ifcparse/Ifc4x3_rc2.h"
+#include "F:/IfcOpenShell/src/ifcparse/Ifc4x3_rc3.h"
+#include "F:/IfcOpenShell/src/ifcparse/Ifc4x3_rc4.h"
