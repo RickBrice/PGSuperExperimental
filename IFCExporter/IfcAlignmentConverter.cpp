@@ -274,18 +274,18 @@ bool  CIfcAlignmentConverter::IsValidAlignment(typename Schema::IfcAlignment* pA
 
                if (!IsEqual(arc->Radius(), start_radius)) return false; // common radii must be equal
 
-               if (arc->IsCCW() != transition->IsStartRadiusCCW()) return false; // curves must be same direction
+if (arc->IsCCW() != transition->IsStartRadiusCCW()) return false; // curves must be same direction
             }
 
             if (iter != end - 1 && !IsZero(end_radius))
             {
-               // transition ends with a radius so a circular curve most come after this transition curve
-               auto arc = (*(iter + 1))->CurveGeometry()->as<Schema::IfcCircularArcSegment2D>();
-               if (!arc) return false; // previous is not an arc
+                // transition ends with a radius so a circular curve most come after this transition curve
+                auto arc = (*(iter + 1))->CurveGeometry()->as<Schema::IfcCircularArcSegment2D>();
+                if (!arc) return false; // previous is not an arc
 
-               if (!IsEqual(arc->Radius(), end_radius)) return false; // common radii must be equal
+                if (!IsEqual(arc->Radius(), end_radius)) return false; // common radii must be equal
 
-               if (arc->IsCCW() != transition->IsEndRadiusCCW()) return false; // curves must be same direction
+                if (arc->IsCCW() != transition->IsEndRadiusCCW()) return false; // curves must be same direction
             }
          }
       }
@@ -296,38 +296,38 @@ bool  CIfcAlignmentConverter::IsValidAlignment(typename Schema::IfcAlignment* pA
 
 bool IsTransitionCurve(Ifc4x3_rc2::IfcAlignmentHorizontalSegment* horizontal_segment)
 {
-   static std::set<Ifc4x3_rc2::IfcAlignmentHorizontalSegmentTypeEnum::Value> transition_curve_types
-   {
-      Ifc4x3_rc2::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_BLOSSCURVE,
-      Ifc4x3_rc2::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CLOTHOID,
-      Ifc4x3_rc2::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_COSINECURVE,
-      //Ifc4x3_rc2::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CUBIC,
-      Ifc4x3_rc2::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CUBICSPIRAL,
-      //Ifc4x3_rc2::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_HELMERTCURVE,
-      Ifc4x3_rc2::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_SINECURVE,
-      Ifc4x3_rc2::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_VIENNESEBEND
-   };
+    static std::set<Ifc4x3_rc2::IfcAlignmentHorizontalSegmentTypeEnum::Value> transition_curve_types
+    {
+       Ifc4x3_rc2::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_BLOSSCURVE,
+       Ifc4x3_rc2::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CLOTHOID,
+       Ifc4x3_rc2::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_COSINECURVE,
+       //Ifc4x3_rc2::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CUBIC,
+       Ifc4x3_rc2::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CUBICSPIRAL,
+       //Ifc4x3_rc2::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_HELMERTCURVE,
+       Ifc4x3_rc2::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_SINECURVE,
+       Ifc4x3_rc2::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_VIENNESEBEND
+    };
 
-   auto found = transition_curve_types.find(horizontal_segment->PredefinedType());
-   return (found == transition_curve_types.end() ? false : true);
+    auto found = transition_curve_types.find(horizontal_segment->PredefinedType());
+    return (found == transition_curve_types.end() ? false : true);
 }
 
 bool IsTransitionCurve(Ifc4x3_rc3::IfcAlignmentHorizontalSegment* horizontal_segment)
 {
-   static std::set<Ifc4x3_rc3::IfcAlignmentHorizontalSegmentTypeEnum::Value> transition_curve_types
-   {
-      Ifc4x3_rc3::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_BLOSSCURVE,
-      Ifc4x3_rc3::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CLOTHOID,
-      Ifc4x3_rc3::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_COSINECURVE,
-      Ifc4x3_rc3::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CUBIC,
-      //Ifc4x3_rc3::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CUBICSPIRAL,
-      //Ifc4x3_rc3::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_HELMERTCURVE,
-      Ifc4x3_rc3::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_SINECURVE,
-      Ifc4x3_rc3::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_VIENNESEBEND
-   };
+    static std::set<Ifc4x3_rc3::IfcAlignmentHorizontalSegmentTypeEnum::Value> transition_curve_types
+    {
+       Ifc4x3_rc3::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_BLOSSCURVE,
+       Ifc4x3_rc3::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CLOTHOID,
+       Ifc4x3_rc3::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_COSINECURVE,
+       Ifc4x3_rc3::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CUBIC,
+       //Ifc4x3_rc3::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CUBICSPIRAL,
+       //Ifc4x3_rc3::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_HELMERTCURVE,
+       Ifc4x3_rc3::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_SINECURVE,
+       Ifc4x3_rc3::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_VIENNESEBEND
+    };
 
-   auto found = transition_curve_types.find(horizontal_segment->PredefinedType());
-   return (found == transition_curve_types.end() ? false : true);
+    auto found = transition_curve_types.find(horizontal_segment->PredefinedType());
+    return (found == transition_curve_types.end() ? false : true);
 }
 
 bool IsTransitionCurve(Ifc4x3_rc4::IfcAlignmentHorizontalSegment* horizontal_segment)
@@ -351,125 +351,202 @@ bool IsTransitionCurve(Ifc4x3_rc4::IfcAlignmentHorizontalSegment* horizontal_seg
 template <typename Schema>
 bool IsCircularCurve(typename Schema::IfcAlignmentHorizontalSegment* horizontal_segment)
 {
-   return horizontal_segment->PredefinedType() == Schema::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CIRCULARARC ? true : false;
+    return horizontal_segment->PredefinedType() == Schema::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CIRCULARARC ? true : false;
+}
+
+Ifc4x3_rc2::IfcAlignmentHorizontal* GetAlignmentHorizontal(Ifc4x3_rc2::IfcAlignment* pAlignment)
+{
+    Ifc4x3_rc2::IfcAlignmentHorizontal* horizontal_alignment = nullptr;
+    auto nested = pAlignment->IsDecomposedBy(); // these are the things that are nested by the alignment
+    for (auto rel_nests : *nested)
+    {
+        ATLASSERT(rel_nests->RelatingObject() == pAlignment);
+        auto related_objects = rel_nests->RelatedObjects();
+        for (auto related_object : *related_objects)
+        {
+            horizontal_alignment = related_object->as<Ifc4x3_rc2::IfcAlignmentHorizontal>();
+            if (horizontal_alignment) break;
+        }
+        if (horizontal_alignment) break;
+    }
+
+    return horizontal_alignment;
+}
+
+template <typename Schema> 
+typename Schema::IfcAlignmentHorizontal* GetAlignmentHorizontal(typename Schema::IfcAlignment* pAlignment)
+{
+    typename Schema::IfcAlignmentHorizontal* horizontal_alignment = nullptr;
+    auto nested = pAlignment->IsNestedBy(); // these are the things that are nested by the alignment
+    for (auto rel_nests : *nested)
+    {
+        ATLASSERT(rel_nests->RelatingObject() == pAlignment);
+        auto related_objects = rel_nests->RelatedObjects();
+        for (auto related_object : *related_objects)
+        {
+            horizontal_alignment = related_object->as<Schema::IfcAlignmentHorizontal>();
+            if (horizontal_alignment) break;
+        }
+        if (horizontal_alignment) break;
+    }
+
+    return horizontal_alignment;
+}
+
+Ifc4x3_rc3::IfcAlignmentHorizontal* GetAlignmentHorizontal(Ifc4x3_rc3::IfcAlignment* pAlignment)
+{
+    return GetAlignmentHorizontal<Ifc4x3_rc3>(pAlignment);
+}
+
+Ifc4x3_rc4::IfcAlignmentHorizontal* GetAlignmentHorizontal(Ifc4x3_rc4::IfcAlignment* pAlignment)
+{
+    return GetAlignmentHorizontal<Ifc4x3_rc4>(pAlignment);
+}
+
+
+Ifc4x3_rc2::IfcAlignmentVertical* GetAlignmentVertical(Ifc4x3_rc2::IfcAlignment* pAlignment)
+{
+    Ifc4x3_rc2::IfcAlignmentVertical* vertical_alignment = nullptr;
+    auto nested = pAlignment->IsDecomposedBy(); // these are the things that are nested by the alignment
+    for (auto rel_nests : *nested)
+    {
+        ATLASSERT(rel_nests->RelatingObject() == pAlignment);
+        auto related_objects = rel_nests->RelatedObjects();
+        for (auto related_object : *related_objects)
+        {
+            vertical_alignment = related_object->as<Ifc4x3_rc2::IfcAlignmentVertical>();
+            if (vertical_alignment) break;
+        }
+        if (vertical_alignment) break;
+    }
+
+    return vertical_alignment;
+}
+
+template <typename Schema>
+typename Schema::IfcAlignmentVertical* GetAlignmentVertical(typename Schema::IfcAlignment* pAlignment)
+{
+    Schema::IfcAlignmentVertical* vertical_alignment = nullptr;
+    auto nested = pAlignment->IsNestedBy(); // these are the things that are nested by the alignment
+    for (auto rel_nests : *nested)
+    {
+        ATLASSERT(rel_nests->RelatingObject() == pAlignment);
+        auto related_objects = rel_nests->RelatedObjects();
+        for (auto related_object : *related_objects)
+        {
+            vertical_alignment = related_object->as<Schema::IfcAlignmentVertical>();
+            if (vertical_alignment) break;
+        }
+        if (vertical_alignment) break;
+    }
+
+    return vertical_alignment;
+}
+
+Ifc4x3_rc3::IfcAlignmentVertical* GetAlignmentVertical(Ifc4x3_rc3::IfcAlignment* pAlignment)
+{
+    return GetAlignmentVertical<Ifc4x3_rc3>(pAlignment);
+}
+
+Ifc4x3_rc4::IfcAlignmentVertical* GetAlignmentVertical(Ifc4x3_rc4::IfcAlignment* pAlignment)
+{
+    return GetAlignmentVertical<Ifc4x3_rc4>(pAlignment);
 }
 
 template <typename Schema>
 bool CIfcAlignmentConverter::IsValidAlignment_4x3(IfcParse::IfcFile& file,typename Schema::IfcAlignment* pAlignment)
 {
-   //boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcRelNests>> nests = pAlignment->Nests();
-   boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcRelNests>> nests = file.instances_by_type<Schema::IfcRelNests>();
-   Schema::IfcAlignmentHorizontal* horizontal_alignment = nullptr;
-   for (auto rel_nests : *nests)
-   {
-      auto relating_object = rel_nests->RelatingObject();
-      if (relating_object == pAlignment)
-      {
-         auto related_objects = rel_nests->RelatedObjects();
-         for (auto related_object : *related_objects)
-         {
-            horizontal_alignment = related_object->as<Schema::IfcAlignmentHorizontal>();
-            if (horizontal_alignment)
-            {
-               break;
-            }
-         }
-      }
-      else if (relating_object == horizontal_alignment)
-      {
-         auto related_objects = rel_nests->RelatedObjects();
+    Schema::IfcAlignmentHorizontal* horizontal_alignment = GetAlignmentHorizontal(pAlignment);
+    ATLASSERT(horizontal_alignment); // should have found one
+    if (!horizontal_alignment)
+        return false;
 
-         auto nSegments = nests->size();
-         if (nSegments == 0)
-         {
-            // alignment doesn't have any segments
-            return false;
-         }
-         else if (nSegments == 1)
-         {
-            // our model doesn't support isolated transition segments
-            // transition curves must be adjacent to circular curves
-            auto alignment_segment = (*(related_objects->begin()))->as<Schema::IfcAlignmentSegment>();
-            //auto horizontal_segment = alignment_segment->DesignParameters()->as<Schema::IfcAlignmentHorizontalSegment>();
+    auto nested = horizontal_alignment->IsNestedBy();
+    auto related_objects = (*nested->begin())->RelatedObjects();
+    auto nSegments = related_objects->size();
+
+    if (nSegments == 0)
+    {
+        // alignment doesn't have any segments
+        return false;
+    }
+    else if (nSegments == 1)
+    {
+        // our model doesn't support isolated transition segments
+        // transition curves must be adjacent to circular curves
+        auto alignment_segment = (*(related_objects->begin()))->as<Schema::IfcAlignmentSegment>();
+        auto horizontal_segment = GetHorizontalAlignmentSegment(alignment_segment);
+        return IsTransitionCurve(horizontal_segment);
+    }
+    else if (nSegments == 2)
+    {
+        // our model doesn't support isolated transition segments
+        // transition curves must be adjacent to circular curves
+        // can't have two transitions adjacent to each other either
+        auto alignment_segment1 = (*(related_objects->begin()))->as<Schema::IfcAlignmentSegment>();
+        auto horizontal_segment1 = GetHorizontalAlignmentSegment(alignment_segment1);
+        bool bIsTransitionCurve1 = IsTransitionCurve(horizontal_segment1);
+
+
+        auto alignment_segment2 = (*(related_objects->begin() + 1))->as<Schema::IfcAlignmentSegment>();
+        auto horizontal_segment2 = GetHorizontalAlignmentSegment(alignment_segment2);
+        bool bIsTransitionCurve2 = IsTransitionCurve(horizontal_segment1);
+
+        return (bIsTransitionCurve1 && bIsTransitionCurve2 ? false : true);
+    }
+    else
+    {
+        // walk the segments - if we run into a transition curve we have to check the following
+        // * transition is adjacent to a circular curve
+        // * common radius with circular curve and transition curve are equal
+        // * radius of transition curve away from circular curve is infinite
+        auto begin = related_objects->begin();
+        auto iter = begin;
+        auto end = related_objects->end();
+        for (; iter != end; iter++)
+        {
+            auto alignment_segment = (*iter)->as<Schema::IfcAlignmentSegment>();
             auto horizontal_segment = GetHorizontalAlignmentSegment(alignment_segment);
-            return IsTransitionCurve(horizontal_segment);
-         }
-         else if (nSegments == 2)
-         {
-            // our model doesn't support isolated transition segments
-            // transition curves must be adjacent to circular curves
-            // can't have two transitions adjacent to each other either
-            auto alignment_segment1 = (*(related_objects->begin()))->as<Schema::IfcAlignmentSegment>();
-            //auto horizontal_segment1 = alignment_segment1->DesignParameters()->as<Schema::IfcAlignmentHorizontalSegment>();
-            auto horizontal_segment1 = GetHorizontalAlignmentSegment(alignment_segment1);
-            bool bIsTransitionCurve1 = IsTransitionCurve(horizontal_segment1);
-
-
-            auto alignment_segment2 = (*(related_objects->begin() + 1))->as<Schema::IfcAlignmentSegment>();
-            //auto horizontal_segment2 = alignment_segment2->DesignParameters()->as<Schema::IfcAlignmentHorizontalSegment>();
-            auto horizontal_segment2 = GetHorizontalAlignmentSegment(alignment_segment2);
-            bool bIsTransitionCurve2 = IsTransitionCurve(horizontal_segment1);
-
-            return (bIsTransitionCurve1 && bIsTransitionCurve2 ? false : true);
-         }
-         else
-         {
-            // walk the segments - if we run into a transition curve we have to check the following
-            // * transition is adjacent to a circular curve
-            // * common radius with circular curve and transition curve are equal
-            // * radius of transition curve away from circular curve is infinite
-            auto begin = related_objects->begin();
-            auto iter = begin;
-            auto end = related_objects->end();
-            for (; iter != end; iter++)
+            if (IsTransitionCurve(horizontal_segment))
             {
-               auto alignment_segment = (*iter)->as<Schema::IfcAlignmentSegment>();
-               //auto horizontal_segment = alignment_segment->DesignParameters()->as<Schema::IfcAlignmentHorizontalSegment>();
-               auto horizontal_segment = GetHorizontalAlignmentSegment(alignment_segment);
-               if (IsTransitionCurve(horizontal_segment))
-               {
-                  Float64 start_radius = horizontal_segment->StartRadiusOfCurvature();
-                  Float64 end_radius = horizontal_segment->EndRadiusOfCurvature();
-                  if (!IsZero(start_radius) && !IsZero(end_radius))
-                     return false; // one radius must be zero
+                Float64 start_radius = horizontal_segment->StartRadiusOfCurvature();
+                Float64 end_radius = horizontal_segment->EndRadiusOfCurvature();
+                if (!IsZero(start_radius) && !IsZero(end_radius))
+                    return false; // one radius must be zero
 
-                  if ((iter == begin && !IsZero(start_radius)) || (iter == end - 1 && !IsZero(end_radius)))
-                     return false; // if starting with a transition curve, start radius must be zero or if ending with a transition curve, end radius must be zero
+                if ((iter == begin && !IsZero(start_radius)) || (iter == end - 1 && !IsZero(end_radius)))
+                    return false; // if starting with a transition curve, start radius must be zero or if ending with a transition curve, end radius must be zero
 
-                  if (iter != begin && !IsZero(start_radius))
-                  {
-                     // transition starts with a radius so a circular curve must preceed this transition curve
-                     auto prev_alignment_segment = (*(iter - 1))->as<Schema::IfcAlignmentSegment>();
-                     //auto prev_horizontal_segment = prev_alignment_segment->DesignParameters()->as<Schema::IfcAlignmentHorizontalSegment>();
-                     auto prev_horizontal_segment = GetHorizontalAlignmentSegment(prev_alignment_segment);
-                     if (!IsCircularCurve<Schema>(prev_horizontal_segment)) return false; // previous is not a circular curve
+                if (iter != begin && !IsZero(start_radius))
+                {
+                    // transition starts with a radius so a circular curve must preceed this transition curve
+                    auto prev_alignment_segment = (*(iter - 1))->as<Schema::IfcAlignmentSegment>();
+                    auto prev_horizontal_segment = GetHorizontalAlignmentSegment(prev_alignment_segment);
+                    if (!IsCircularCurve<Schema>(prev_horizontal_segment)) return false; // previous is not a circular curve
 
-                     Float64 circular_curve_radius = prev_horizontal_segment->StartRadiusOfCurvature();
-                     ATLASSERT(IsEqual(circular_curve_radius, prev_horizontal_segment->EndRadiusOfCurvature()));
-                     if (!IsEqual(circular_curve_radius, start_radius)) return false; // common radii must be equal
+                    Float64 circular_curve_radius = prev_horizontal_segment->StartRadiusOfCurvature();
+                    ATLASSERT(IsEqual(circular_curve_radius, prev_horizontal_segment->EndRadiusOfCurvature()));
+                    if (!IsEqual(circular_curve_radius, start_radius)) return false; // common radii must be equal
 
-                     if (::BinarySign(start_radius) == ::BinarySign(circular_curve_radius)) return false; // curves must be same direction
-                  }
+                    if (::BinarySign(start_radius) != ::BinarySign(circular_curve_radius)) return false; // curves must be same direction
+                }
 
-                  if (iter != end - 1 && !IsZero(end_radius))
-                  {
-                     // transition ends with a radius so a circular curve most come after this transition curve
-                     auto next_alignment_segment = (*(iter + 1))->as<Schema::IfcAlignmentSegment>();
-                     //auto next_horizontal_segment = next_alignment_segment->DesignParameters()->as<Schema::IfcAlignmentHorizontalSegment>();
-                     auto next_horizontal_segment = GetHorizontalAlignmentSegment(next_alignment_segment);
-                     if (!IsCircularCurve<Schema>(next_horizontal_segment)) return false; // next is not a circular curve
+                if (iter != end - 1 && !IsZero(end_radius))
+                {
+                    // transition ends with a radius so a circular curve most come after this transition curve
+                    auto next_alignment_segment = (*(iter + 1))->as<Schema::IfcAlignmentSegment>();
+                    auto next_horizontal_segment = GetHorizontalAlignmentSegment(next_alignment_segment);
+                    if (!IsCircularCurve<Schema>(next_horizontal_segment)) return false; // next is not a circular curve
 
-                     Float64 circular_curve_radius = next_horizontal_segment->StartRadiusOfCurvature();
-                     ATLASSERT(IsEqual(circular_curve_radius, next_horizontal_segment->EndRadiusOfCurvature()));
-                     if (!IsEqual(circular_curve_radius, start_radius)) return false; // common radii must be equal
+                    Float64 circular_curve_radius = next_horizontal_segment->StartRadiusOfCurvature();
+                    ATLASSERT(IsEqual(circular_curve_radius, next_horizontal_segment->EndRadiusOfCurvature()));
+                    if (!IsEqual(circular_curve_radius, end_radius)) return false; // common radii must be equal
 
-                     if (::BinarySign(end_radius) == ::BinarySign(circular_curve_radius)) return false; // curves must be same direction
-                  }
-               }
+                    if (::BinarySign(end_radius) != ::BinarySign(circular_curve_radius)) return false; // curves must be same direction
+                }
             }
-         }
-      }
-   }
+        }
+    }
 
    return true;
 }
@@ -950,150 +1027,130 @@ Float64 CIfcAlignmentConverter::GetStartDistAlong(Ifc4x3_rc4::IfcAlignmentHorizo
 }
 
 template <typename Schema>
-void CIfcAlignmentConverter::LoadAlignment_4x3(IfcParse::IfcFile& file,typename Schema::IfcAlignment* pAlignment)
+void CIfcAlignmentConverter::LoadAlignment_4x3(IfcParse::IfcFile& file, typename Schema::IfcAlignment* pAlignment)
 {
-   USES_CONVERSION;
-   m_bAlignmentStarted = false; // the alignment datablock has not yet been started
+    USES_CONVERSION;
+    m_bAlignmentStarted = false; // the alignment datablock has not yet been started
 
-   m_AlignmentData.Name = A2T(pAlignment->hasName() ? pAlignment->Name().c_str() : pAlignment->hasDescription() ? pAlignment->Description().c_str() : "");
+    m_AlignmentData.Name = A2T(pAlignment->hasName() ? pAlignment->Name().c_str() : pAlignment->hasDescription() ? pAlignment->Description().c_str() : "");
 
-   // initalize the alignment data
-   m_AlignmentData.Direction = 0.00;
-   m_AlignmentData.xRefPoint = 0.00;
-   m_AlignmentData.yRefPoint = 0.00;
-   m_AlignmentData.RefStation = 0.00;
-   m_AlignmentData.HorzCurves.clear();
+    // initalize the alignment data
+    m_AlignmentData.Direction = 0.00;
+    m_AlignmentData.xRefPoint = 0.00;
+    m_AlignmentData.yRefPoint = 0.00;
+    m_AlignmentData.RefStation = 0.00;
+    m_AlignmentData.HorzCurves.clear();
 
-   auto nests = file.instances_by_type<Schema::IfcRelNests>();
-   Schema::IfcAlignmentHorizontal* horizontal_alignment = nullptr;
-   for (auto rel_nests : *nests)
-   {
-      auto relating_object = rel_nests->RelatingObject();
-      if (relating_object == pAlignment)
-      {
-         auto related_objects = rel_nests->RelatedObjects();
-         for (auto related_object : *related_objects)
-         {
-            horizontal_alignment = related_object->as<Schema::IfcAlignmentHorizontal>();
-            if (horizontal_alignment)
+    Schema::IfcAlignmentHorizontal* horizontal_alignment = GetAlignmentHorizontal(pAlignment);
+    ATLASSERT(horizontal_alignment); // should have found one
+
+    Float64 current_station = GetStartDistAlong(horizontal_alignment);
+
+    // alignment is made up of Line, Spiral, and/or Curve elements
+    auto nested = horizontal_alignment->IsNestedBy();
+    auto related_objects = (*nested->begin())->RelatedObjects();
+    auto begin = related_objects->begin();
+    auto iter = begin;
+    auto end = related_objects->end();
+    for (; iter != end; iter++)
+    {
+        auto alignment_segment = (*iter)->as<Schema::IfcAlignmentSegment>();
+        bool bIsThereANextSegment = ((iter + 1) != end);
+
+        auto horizontal_alignment_segment = GetHorizontalAlignmentSegment(alignment_segment);
+
+        auto predefined_type = horizontal_alignment_segment->PredefinedType();
+
+        Schema::IfcAlignmentHorizontalSegment* entrySpiral = nullptr;
+        Schema::IfcAlignmentHorizontalSegment* exitSpiral = nullptr;
+
+        Float64 end_station = current_station;
+
+        if (predefined_type == Schema::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_LINE)
+        {
+            end_station = OnLine<Schema, Schema::IfcAlignmentHorizontalSegment>(current_station, horizontal_alignment_segment);
+        }
+        else if (predefined_type == Schema::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CLOTHOID)
+        {
+            // PGSuper can only handle
+            // Spiral-Curve
+            // Spiral-Curve-Spiral
+            // Curve-Spiral
+            //
+            // Curve-Spiral-Curve, where Spiral is a transition spiral with the start and end radius equal
+            // to the curve radii... PGSuper cannot do this case
+
+            entrySpiral = horizontal_alignment_segment;
+            if (bIsThereANextSegment)
             {
-               break;
-            }
-         }
-      }
-      else if (relating_object == horizontal_alignment)
-      {
-          Float64 current_station = GetStartDistAlong(horizontal_alignment);
+                // if there is a next segment, check to see if it is a curve
+                iter++; // advance to next segment
+                auto curve = GetHorizontalAlignmentSegment((*(iter))->as<Schema::IfcAlignmentSegment>());
+                if (curve->PredefinedType() != Schema::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CIRCULARARC)
+                    curve = nullptr;
 
-         // alignment is made up of Line, Spiral, and/or Curve elements
-         auto related_objects = rel_nests->RelatedObjects();
-         auto begin = related_objects->begin();
-         auto iter = begin;
-         auto end = related_objects->end();
-         for (; iter != end; iter++)
-         {
-            auto alignment_segment = (*iter)->as<Schema::IfcAlignmentSegment>();
-            bool bIsThereANextSegment = ((iter + 1) != end);
-
-            //auto horizontal_alignment_segment = alignment_segment->DesignParameters()->as<Schema::IfcAlignmentHorizontalSegment>();
-            auto horizontal_alignment_segment = GetHorizontalAlignmentSegment(alignment_segment);
-
-            auto predefined_type = horizontal_alignment_segment->PredefinedType();
-
-            Schema::IfcAlignmentHorizontalSegment* entrySpiral = nullptr;
-            Schema::IfcAlignmentHorizontalSegment* exitSpiral = nullptr;
-
-            Float64 end_station = current_station;
-
-            if (predefined_type == Schema::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_LINE)
-            {
-               end_station = OnLine<Schema, Schema::IfcAlignmentHorizontalSegment>(current_station, horizontal_alignment_segment);
-            }
-            else if (predefined_type == Schema::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CLOTHOID)
-            {
-               // PGSuper can only handle
-               // Spiral-Curve
-               // Spiral-Curve-Spiral
-               // Curve-Spiral
-               //
-               // Curve-Spiral-Curve, where Spiral is a transition spiral with the start and end radius equal
-               // to the curve radii... PGSuper cannot do this case
-
-               entrySpiral = horizontal_alignment_segment;
-               if (bIsThereANextSegment)
-               {
-                  // if there is a next segment, check to see if it is a curve
-                  iter++; // advance to next segment
-                  //auto curve = (*(iter))->as<Schema::IfcAlignmentSegment>()->DesignParameters()->as<Schema::IfcAlignmentHorizontalSegment>();
-                  auto curve = GetHorizontalAlignmentSegment((*(iter))->as<Schema::IfcAlignmentSegment>());
-                  if (curve->PredefinedType() != Schema::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CIRCULARARC)
-                     curve = nullptr;
-
-                  if (curve)
-                  {
-                     // it's a curve... is there an element that follows the curve?
-                     bIsThereANextSegment = ((iter + 1) != end);
-                     if (bIsThereANextSegment)
-                     {
+                if (curve)
+                {
+                    // it's a curve... is there an element that follows the curve?
+                    bIsThereANextSegment = ((iter + 1) != end);
+                    if (bIsThereANextSegment)
+                    {
                         // if there is a next segment, see if it is a spiral
-                        //exitSpiral = (*(iter + 1))->as<Schema::IfcAlignmentSegment>()->DesignParameters()->as<Schema::IfcAlignmentHorizontalSegment>();
                         exitSpiral = GetHorizontalAlignmentSegment((*(iter + 1))->as<Schema::IfcAlignmentSegment>());
                         if (exitSpiral->PredefinedType() != Schema::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CLOTHOID)
-                           exitSpiral = nullptr;
+                            exitSpiral = nullptr;
 
                         // if not a spiral, pExitSpiral will be nullptr
                         // this is OK, it just means we have a Spiral-Curve situation
                         if (exitSpiral)
                         {
-                           // it is an exit spiral, so advance the iterator
-                           iter++;
-                           bIsThereANextSegment = ((iter + 1) != end);
+                            // it is an exit spiral, so advance the iterator
+                            iter++;
+                            bIsThereANextSegment = ((iter + 1) != end);
                         }
-                     }
+                    }
 
-                     end_station = OnCurve_4x3<Schema>(current_station, entrySpiral, curve, exitSpiral);
-                  }
-                  else
-                  {
-                     IFC_THROW(_T("A curve must follow a spiral")); // because PGSuper can't handle it otherwise
-                     ATLASSERT(false); // a curve must follow a spiral
-                  }
-               }
-               else
-               {
-                  m_Notes.push_back(std::_tstring(_T("Element ignored: The last element in the alignment cannot be a Spiral."))); // PGSuper can't model a lone spiral
-               }
+                    end_station = OnCurve_4x3<Schema>(current_station, entrySpiral, curve, exitSpiral);
+                }
+                else
+                {
+                    IFC_THROW(_T("A curve must follow a spiral")); // because PGSuper can't handle it otherwise
+                    ATLASSERT(false); // a curve must follow a spiral
+                }
             }
-            else if (predefined_type == Schema::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CIRCULARARC)
+            else
             {
-               // looking for Curve-Spiral case
-               if (bIsThereANextSegment)
-               {
-                  // check to see if the next element is a spiral
-                  //exitSpiral = (*(iter + 1))->as<Schema::IfcAlignmentSegment>()->DesignParameters()->as<Schema::IfcAlignmentHorizontalSegment>();
-                  exitSpiral = GetHorizontalAlignmentSegment((*(iter + 1))->as<Schema::IfcAlignmentSegment>());
-                  if (exitSpiral->PredefinedType() != Schema::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CLOTHOID)
-                     exitSpiral = nullptr;
+                m_Notes.push_back(std::_tstring(_T("Element ignored: The last element in the alignment cannot be a Spiral."))); // PGSuper can't model a lone spiral
+            }
+        }
+        else if (predefined_type == Schema::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CIRCULARARC)
+        {
+            // looking for Curve-Spiral case
+            if (bIsThereANextSegment)
+            {
+                // check to see if the next element is a spiral
+                exitSpiral = GetHorizontalAlignmentSegment((*(iter + 1))->as<Schema::IfcAlignmentSegment>());
+                if (exitSpiral->PredefinedType() != Schema::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CLOTHOID)
+                    exitSpiral = nullptr;
 
-                  // if not a spiral, pExitSpiral will be nullptr
-                  // this is OK, it just means we have a Spiral-Curve situation
-                  if (exitSpiral)
-                  {
-                     iter++;
-                     bIsThereANextSegment = ((iter + 1) != end);
-                  }
+                // if not a spiral, pExitSpiral will be nullptr
+                // this is OK, it just means we have a Spiral-Curve situation
+                if (exitSpiral)
+                {
+                    iter++;
+                    bIsThereANextSegment = ((iter + 1) != end);
+                }
 
-                  // Check if the next object is a Curve and if
-                  // the exit spiral and the curve are touching
-                  if (bIsThereANextSegment)
-                  {
-                     //auto next_curve = (*(iter))->as<Schema::IfcAlignmentSegment>()->DesignParameters()->as<Schema::IfcAlignmentHorizontalSegment>();
-                     auto next_curve = GetHorizontalAlignmentSegment((*(iter))->as<Schema::IfcAlignmentSegment>());
-                     if (next_curve->PredefinedType() != Schema::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CIRCULARARC)
+                // Check if the next object is a Curve and if
+                // the exit spiral and the curve are touching
+                if (bIsThereANextSegment)
+                {
+                    auto next_curve = GetHorizontalAlignmentSegment((*(iter))->as<Schema::IfcAlignmentSegment>());
+                    if (next_curve->PredefinedType() != Schema::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CIRCULARARC)
                         next_curve = nullptr;
 
-                     if (next_curve && exitSpiral)
-                     {
+                    if (next_curve && exitSpiral)
+                    {
                         CComPtr<IPoint2d> pntSpiralStart, pntSpiralPI, pntSpiralEnd;
                         GetSpiralPoints_4x3<Schema>(exitSpiral, &pntSpiralStart, &pntSpiralPI, &pntSpiralEnd);
 
@@ -1102,23 +1159,21 @@ void CIfcAlignmentConverter::LoadAlignment_4x3(IfcParse::IfcFile& file,typename 
 
                         if (SameLocation(pntSpiralEnd, pntNextCurveStart, m_Precision) == S_FALSE)
                         {
-                           IFC_THROW(_T("PGSuper cannot model a transition spiral between two circular curves."));
+                            IFC_THROW(_T("PGSuper cannot model a transition spiral between two circular curves."));
                         }
-                     }
-                  }
-               }
+                    }
+                }
+            }
 
-               ATLASSERT(entrySpiral == nullptr); // this must be the case
-               end_station = OnCurve_4x3<Schema>(current_station, entrySpiral, horizontal_alignment_segment, exitSpiral);
-            }
-            else
-            {
-               ATLASSERT(false);
-            }
-            current_station = end_station;
-         }
-      }
-   }
+            ATLASSERT(entrySpiral == nullptr); // this must be the case
+            end_station = OnCurve_4x3<Schema>(current_station, entrySpiral, horizontal_alignment_segment, exitSpiral);
+        }
+        else
+        {
+            ATLASSERT(false);
+        }
+        current_station = end_station;
+    }
 }
 
 template <typename Schema>
@@ -1210,76 +1265,60 @@ void CIfcAlignmentConverter::LoadProfile_4x3(IfcParse::IfcFile& file, typename S
    m_ProfileData.Grade = 0;
    m_ProfileData.VertCurves.clear();
 
-   Float64 start_station = 0;
 
-   auto nests = file.instances_by_type<Schema::IfcRelNests>();
-   Schema::IfcAlignmentHorizontal* horizontal_alignment = nullptr;
-   Schema::IfcAlignmentVertical* vertical_alignment = nullptr;
-   for (auto rel_nests : *nests)
+   Schema::IfcAlignmentHorizontal* horizontal_alignment = GetAlignmentHorizontal(pAlignment);
+   Schema::IfcAlignmentVertical* vertical_alignment = GetAlignmentVertical(pAlignment);
+
+   Float64 start_station = GetStartDistAlong(horizontal_alignment);
+
+   if(vertical_alignment)
    {
-      auto relating_object = rel_nests->RelatingObject();
-      if (relating_object == pAlignment)
+       auto nested = vertical_alignment->IsNestedBy();
+       auto related_objects = (*nested->begin())->RelatedObjects();
+
+      if (related_objects->size() == 0)
       {
-         auto related_objects = rel_nests->RelatedObjects();
-         for (auto related_object : *related_objects)
-         {
-            if(horizontal_alignment == nullptr) horizontal_alignment = related_object->as<Schema::IfcAlignmentHorizontal>();
-            if(vertical_alignment == nullptr) vertical_alignment = related_object->as<Schema::IfcAlignmentVertical>();
-         }
+         // the profile geometry list is empty so assume a flat grade
+         m_Notes.push_back(std::_tstring(_T("A profile was not found or the profile does not contain segments. Assuming a default profile.")));
+         m_ProfileData.Station = start_station;
+         m_ProfileData.Elevation = 0.0;
+         m_ProfileData.Grade = 0.0;
+         return;
       }
-      else if (relating_object == horizontal_alignment)
+
+      auto begin = related_objects->begin();
+      auto iter = begin;
+      auto end = related_objects->end();
+      for (; iter != end; iter++)
       {
-          start_station = GetStartDistAlong(horizontal_alignment);
-      }
-      else if (relating_object == vertical_alignment)
-      {
-         auto related_objects = rel_nests->RelatedObjects();
+          auto alignment_segment = (*iter)->as<Schema::IfcAlignmentSegment>();
+          auto vertical_alignment_segment = GetVerticalAlignmentSegment(alignment_segment);
+          auto predefined_type = vertical_alignment_segment->PredefinedType();
 
-         if (related_objects->size() == 0)
-         {
-            // the profile geometry list is empty so assume a flat grade
-            m_Notes.push_back(std::_tstring(_T("A profile was not found or the profile does not contain segments. Assuming a default profile.")));
-            m_ProfileData.Station = start_station;
-            m_ProfileData.Elevation = 0.0;
-            m_ProfileData.Grade = 0.0;
-            return;
-         }
-
-         auto begin = related_objects->begin();
-         auto iter = begin;
-         auto end = related_objects->end();
-         for (; iter != end; iter++)
-         {
-            auto alignment_segment = (*iter)->as<Schema::IfcAlignmentSegment>();
-            //auto vertical_alignment_segment = alignment_segment->DesignParameters()->as<Schema::IfcAlignmentVerticalSegment>();
-            auto vertical_alignment_segment = GetVerticalAlignmentSegment(alignment_segment);
-            auto predefined_type = vertical_alignment_segment->PredefinedType();
-
-            if (predefined_type == Schema::IfcAlignmentVerticalSegmentTypeEnum::IfcAlignmentVerticalSegmentType_CONSTANTGRADIENT)
-            {
-               LinearSegment_4x3<Schema>(start_station,vertical_alignment_segment);
-            }
-            else if (predefined_type == Schema::IfcAlignmentVerticalSegmentTypeEnum::IfcAlignmentVerticalSegmentType_PARABOLICARC)
-            {
-               ParabolicSegment_4x3<Schema>(start_station,vertical_alignment_segment);
-            }
-            else if (predefined_type == Schema::IfcAlignmentVerticalSegmentTypeEnum::IfcAlignmentVerticalSegmentType_CIRCULARARC)
-            {
+          if (predefined_type == Schema::IfcAlignmentVerticalSegmentTypeEnum::IfcAlignmentVerticalSegmentType_CONSTANTGRADIENT)
+          {
+              LinearSegment_4x3<Schema>(start_station,vertical_alignment_segment);
+          }
+          else if (predefined_type == Schema::IfcAlignmentVerticalSegmentTypeEnum::IfcAlignmentVerticalSegmentType_PARABOLICARC)
+          {
+              ParabolicSegment_4x3<Schema>(start_station,vertical_alignment_segment);
+          }
+          else if (predefined_type == Schema::IfcAlignmentVerticalSegmentTypeEnum::IfcAlignmentVerticalSegmentType_CIRCULARARC)
+          {
 #pragma Reminder("WORKING HERE - Need to deal with vertical circular arcs") // treat it as a parabola for now
-               ParabolicSegment_4x3<Schema>(start_station, vertical_alignment_segment);
-            }
-            else if (predefined_type == Schema::IfcAlignmentVerticalSegmentTypeEnum::IfcAlignmentVerticalSegmentType_CLOTHOID)
-            {
+             ParabolicSegment_4x3<Schema>(start_station, vertical_alignment_segment);
+          }
+          else if (predefined_type == Schema::IfcAlignmentVerticalSegmentTypeEnum::IfcAlignmentVerticalSegmentType_CLOTHOID)
+          {
 #pragma Reminder("WORKING HERE - Need to deal with vertical clothoid arcs") // treat it as a parabola for now
-               ParabolicSegment_4x3<Schema>(start_station, vertical_alignment_segment);
-            }
-            else
-            {
-               ATLASSERT(false); // is there a new type ???
-                                 // TODO: provide a better exception
-               IFC_THROW(_T("An unknown profile element was encountered"));
-            }
-         }
+             ParabolicSegment_4x3<Schema>(start_station, vertical_alignment_segment);
+          }
+          else
+          {
+             ATLASSERT(false); // is there a new type ???
+                                // TODO: provide a better exception
+             IFC_THROW(_T("An unknown profile element was encountered"));
+          }
       }
    }
 
@@ -1450,7 +1489,7 @@ Float64 CIfcAlignmentConverter::OnCurve(Float64 startStation, typename SpiralTyp
 
    Float64 dx = sx - cx;
    Float64 dy = sy - cy;
-   ATLASSERT(IsEqual(radius, sqrt(dx*dx + dy*dy)));
+   ATLASSERT(IsEqual(fabs(radius), sqrt(dx*dx + dy*dy)));
 #endif // _DEBUG
 
    // Determine the control points
@@ -1547,7 +1586,7 @@ Float64 CIfcAlignmentConverter::OnCurve(Float64 startStation, typename SpiralTyp
    hc->putref_PBT(pntStart);
    hc->putref_PI(pntPI);
    hc->putref_PFT(pntEnd);
-   hc->put_Radius(radius);
+   hc->put_Radius(fabs(radius));
    hc->put_SpiralLength(spEntry, entry_spiral_length);
    hc->put_SpiralLength(spExit, exit_spiral_length);
 
@@ -1576,7 +1615,7 @@ Float64 CIfcAlignmentConverter::OnCurve(Float64 startStation, typename SpiralTyp
    HorzCurveData hcData;
    hcData.EntrySpiral = entry_spiral_length;
    hcData.ExitSpiral = exit_spiral_length;
-   hcData.Radius = radius;
+   hcData.Radius = fabs(radius);
 
    Float64 tangent;
    hc->get_BkTangentLength(&tangent);
@@ -1695,7 +1734,7 @@ Float64 CIfcAlignmentConverter::OnCurve_4x3(Float64 startStation, typename Schem
 
    Float64 dx = sx - cx;
    Float64 dy = sy - cy;
-   ATLASSERT(IsEqual(radius, sqrt(dx*dx + dy*dy)));
+   ATLASSERT(IsEqual(fabs(radius), sqrt(dx*dx + dy*dy)));
 #endif // _DEBUG
 
    // Determine the control points
@@ -1792,7 +1831,7 @@ Float64 CIfcAlignmentConverter::OnCurve_4x3(Float64 startStation, typename Schem
    hc->putref_PBT(pntStart);
    hc->putref_PI(pntPI);
    hc->putref_PFT(pntEnd);
-   hc->put_Radius(radius);
+   hc->put_Radius(fabs(radius));
    hc->put_SpiralLength(spEntry, entry_spiral_length);
    hc->put_SpiralLength(spExit, exit_spiral_length);
 
@@ -1821,7 +1860,7 @@ Float64 CIfcAlignmentConverter::OnCurve_4x3(Float64 startStation, typename Schem
    HorzCurveData hcData;
    hcData.EntrySpiral = entry_spiral_length;
    hcData.ExitSpiral = exit_spiral_length;
-   hcData.Radius = radius;
+   hcData.Radius = fabs(radius);
 
    Float64 tangent;
    hc->get_BkTangentLength(&tangent);
@@ -1887,7 +1926,6 @@ void CIfcAlignmentConverter::GetCurvePoints_4x3(typename Schema::IfcAlignmentHor
    auto L = ::ConvertToSysUnits(pCurve->SegmentLength(), *m_pLengthUnit);
    auto R = ::ConvertToSysUnits(pCurve->StartRadiusOfCurvature(), *m_pLengthUnit);
    bool bIsCCW = (R < 0 ? true : false);
-   R = fabs(R);
 
    Float64 delta = L / R;
    Float64 T = R*tan(delta / 2);
@@ -1968,7 +2006,6 @@ void CIfcAlignmentConverter::GetSpiralPoints_4x3(typename Schema::IfcAlignmentHo
    auto Rend = ::ConvertToSysUnits(pSpiral->EndRadiusOfCurvature(), *m_pLengthUnit);
    auto R = IsZero(Rstart) ? Rend : Rstart; // zero means infinite radius
    bool bIsCCW = (R < 0 ? true : false);
-   R = fabs(R);
 
    Float64 sx, sy;
    GetPoint<Schema>(pStart, &sx, &sy);
