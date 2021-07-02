@@ -301,8 +301,11 @@ void CreateHorizontalAlignment_4x3(IBroker* pBroker, IfcHierarchyHelper<Schema>&
    }
 
    // create a horizontal alignment from all the alignment segments
-// Ifc4x3_rc4   auto horizontal_alignment = new Schema::IfcAlignmentHorizontal(IfcParse::IfcGlobalId(), file.getSingle<Schema::IfcOwnerHistory>(), std::string("Horz Alignment"), boost::none, boost::none, file.getSingle<Schema::IfcLocalPlacement>(), nullptr/*representation*/);
+#if defined EXPORT_IFC_4x3_rc3
    auto horizontal_alignment = new Schema::IfcAlignmentHorizontal(IfcParse::IfcGlobalId(), file.getSingle<Schema::IfcOwnerHistory>(), std::string("Horz Alignment"), boost::none, boost::none, file.getSingle<Schema::IfcLocalPlacement>(), nullptr/*representation*/, startStation);
+#else
+   auto horizontal_alignment = new Schema::IfcAlignmentHorizontal(IfcParse::IfcGlobalId(), file.getSingle<Schema::IfcOwnerHistory>(), std::string("Horz Alignment"), boost::none, boost::none, file.getSingle<Schema::IfcLocalPlacement>(), nullptr/*representation*/);
+#endif
    file.addEntity(horizontal_alignment);
 
    auto nests = new Schema::IfcRelNests(IfcParse::IfcGlobalId(), file.getSingle<Schema::IfcOwnerHistory>(), std::string("Horz Segments"), std::string("Nests horizontal alignment segments with horizontal alignment"), horizontal_alignment, alignment_segments);
@@ -687,12 +690,30 @@ typename Schema::IfcProduct* CreateGirderSegment_4x3(IBroker* pBroker, const CSe
 
 
     boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcProfileDef>> cross_sections(new IfcTemplatedEntityList<Schema::IfcProfileDef>());
-    IfcEntityList::ptr cross_section_positions(new IfcEntityList);
+    
+#if defined EXPORT_IFC_4x3_rc3
+     IfcEntityList::ptr cross_section_positions(new IfcEntityList);
+#else
+    boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcAxis2PlacementLinear>> cross_section_positions(new IfcTemplatedEntityList<Schema::IfcAxis2PlacementLinear>());
+#endif
+
+    //CComPtr<IAngle> objStartSkew, objEndSkew;
+    //pBridge->GetSegmentSkewAngle(segmentKey, pgsTypes::metStart, &objStartSkew);
+    //pBridge->GetSegmentSkewAngle(segmentKey, pgsTypes::metEnd, &objEndSkew);
+
+    //Float64 start_skew, end_skew;
+    //objStartSkew->get_Value(&start_skew);
+    //objEndSkew->get_Value(&end_skew);
 
     GET_IFACE2(pBroker, IShapes, pShapes);
     for (const pgsPointOfInterest& poi : vPoi)
     {
+#if defined EXPORT_IFC_4x3_rc3
         cross_section_positions->push(new Ifc4x3_rc3::IfcNonNegativeLengthMeasure(poi.GetDistFromStart()));
+#else
+        cross_section_positions->push(new Schema::IfcAxis2PlacementLinear(new Schema::IfcCartesianPoint(std::vector<double>{poi.GetDistFromStart(), 0}), nullptr, nullptr));
+#endif
+
 
         CComPtr<IShape> shape;
         IndexType gdrIdx, slabIdx;
@@ -753,14 +774,6 @@ typename Schema::IfcProduct* CreateGirderSegment_4x3(IBroker* pBroker, const CSe
 
         cross_sections->push(girder_section);
     }
-
-    // Ifc4x3_rc4
-    //boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcAxis2PlacementLinear>> cross_section_positions(new IfcTemplatedEntityList<Schema::IfcAxis2PlacementLinear>());
-    //auto start_section = new Schema::IfcAxis2PlacementLinear(new Schema::IfcCartesianPoint(std::vector<double>{0, 0}), nullptr, nullptr);
-    //auto end_section = new Schema::IfcAxis2PlacementLinear(new Schema::IfcCartesianPoint(std::vector<double>{Ls, 0}), nullptr, nullptr);
-    //cross_section_positions->push(start_section);
-    //cross_section_positions->push(end_section);
-
 
     auto sectioned_solid = new Schema::IfcSectionedSolidHorizontal(girder_line, cross_sections, cross_section_positions, true/*fixed vertical axis*/);
 
@@ -932,16 +945,17 @@ typename Schema::IfcProduct* CreateClosureJoint_4x3(IBroker* pBroker, const CClo
     cross_sections->push(girder_section);
     cross_sections->push(girder_section);
 
-    // Ifc4x3_rc4
-    //boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcAxis2PlacementLinear>> cross_section_positions(new IfcTemplatedEntityList<Schema::IfcAxis2PlacementLinear>());
-    //auto start_section = new Schema::IfcAxis2PlacementLinear(new Schema::IfcCartesianPoint(std::vector<double>{0, 0}), nullptr, nullptr);
-    //auto end_section = new Schema::IfcAxis2PlacementLinear(new Schema::IfcCartesianPoint(std::vector<double>{Ls, 0}), nullptr, nullptr);
-    //cross_section_positions->push(start_section);
-    //cross_section_positions->push(end_section);
-
+#if defined EXPORT_IFC_4x3_rc3
     IfcEntityList::ptr cross_section_positions(new IfcEntityList);
     cross_section_positions->push(new Ifc4x3_rc3::IfcNonNegativeLengthMeasure(0.0));
     cross_section_positions->push(new Ifc4x3_rc3::IfcNonNegativeLengthMeasure(Lc));
+#else
+    boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcAxis2PlacementLinear>> cross_section_positions(new IfcTemplatedEntityList<Schema::IfcAxis2PlacementLinear>());
+    auto start_section = new Schema::IfcAxis2PlacementLinear(new Schema::IfcCartesianPoint(std::vector<double>{0, 0}), nullptr, nullptr);
+    auto end_section = new Schema::IfcAxis2PlacementLinear(new Schema::IfcCartesianPoint(std::vector<double>{Lc, 0}), nullptr, nullptr);
+    cross_section_positions->push(start_section);
+    cross_section_positions->push(end_section);
+#endif
 
     auto sectioned_solid = new Schema::IfcSectionedSolidHorizontal(girder_line, cross_sections, cross_section_positions, true/*fixed vertical axis*/);
 
@@ -1058,16 +1072,17 @@ typename Schema::IfcProduct* CreateDeck_4x3(IBroker* pBroker, IfcHierarchyHelper
    CComPtr<IPoint2d> startPoint;
    pAlignment->GetStartPoint(2, &startStation, &startElevation, &startGrade, &startPoint);
 
-   // Ifc4x3_rc4
-   //boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcAxis2PlacementLinear>> cross_section_positions(new IfcTemplatedEntityList<Schema::IfcAxis2PlacementLinear>());
-   //auto start_section = new Schema::IfcAxis2PlacementLinear(new Schema::IfcCartesianPoint(std::vector<double>{startBrgStation - startStation, 0}), nullptr, nullptr);
-   //auto end_section = new Schema::IfcAxis2PlacementLinear(new Schema::IfcCartesianPoint(std::vector<double>{endBrgStation - startStation, 0}), nullptr, nullptr);
-   //cross_section_positions->push(start_section);
-   //cross_section_positions->push(end_section);
-
+#if defined EXPORT_IFC_4x3_rc3
    IfcEntityList::ptr cross_section_positions(new IfcEntityList);
    cross_section_positions->push(new Ifc4x3_rc3::IfcNonNegativeLengthMeasure(startBrgStation - startStation));
    cross_section_positions->push(new Ifc4x3_rc3::IfcNonNegativeLengthMeasure(endBrgStation - startStation));
+#else
+   boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcAxis2PlacementLinear>> cross_section_positions(new IfcTemplatedEntityList<Schema::IfcAxis2PlacementLinear>());
+   auto start_section = new Schema::IfcAxis2PlacementLinear(new Schema::IfcCartesianPoint(std::vector<double>{startBrgStation - startStation, 0}), nullptr, nullptr);
+   auto end_section = new Schema::IfcAxis2PlacementLinear(new Schema::IfcCartesianPoint(std::vector<double>{endBrgStation - startStation, 0}), nullptr, nullptr);
+   cross_section_positions->push(start_section);
+   cross_section_positions->push(end_section);
+#endif
 
    auto sectioned_solid = new Schema::IfcSectionedSolidHorizontal(directrix, cross_sections, cross_section_positions, true/*Y is always up*/);
 
@@ -1186,17 +1201,17 @@ typename Schema::IfcProduct* CreateRailingSystem_4x3(IBroker* pBroker, IfcHierar
        CComPtr<IPoint2d> startPoint;
        pAlignment->GetStartPoint(2, &startStation, &startElevation, &startGrade, &startPoint);
 
-       // Ifc4x3_rc3
-       //boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcAxis2PlacementLinear>> cross_section_positions(new IfcTemplatedEntityList<Schema::IfcAxis2PlacementLinear>());
-       //auto start_section = new Schema::IfcAxis2PlacementLinear(new Schema::IfcCartesianPoint(std::vector<double>{startBrgStation - startStation, 0}), nullptr, nullptr);
-       //auto end_section = new Schema::IfcAxis2PlacementLinear(new Schema::IfcCartesianPoint(std::vector<double>{endBrgStation - startStation, 0}), nullptr, nullptr);
-       //cross_section_positions->push(start_section);
-       //cross_section_positions->push(end_section);
-
+#if defined EXPORT_IFC_4x3_rc3
        IfcEntityList::ptr cross_section_positions(new IfcEntityList);
        cross_section_positions->push(new Ifc4x3_rc3::IfcNonNegativeLengthMeasure(startBrgStation - startStation));
        cross_section_positions->push(new Ifc4x3_rc3::IfcNonNegativeLengthMeasure(endBrgStation - startStation));
-
+#else
+       boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcAxis2PlacementLinear>> cross_section_positions(new IfcTemplatedEntityList<Schema::IfcAxis2PlacementLinear>());
+       auto start_section = new Schema::IfcAxis2PlacementLinear(new Schema::IfcCartesianPoint(std::vector<double>{startBrgStation - startStation, 0}), nullptr, nullptr);
+       auto end_section = new Schema::IfcAxis2PlacementLinear(new Schema::IfcCartesianPoint(std::vector<double>{endBrgStation - startStation, 0}), nullptr, nullptr);
+       cross_section_positions->push(start_section);
+       cross_section_positions->push(end_section);
+#endif
 
        auto sectioned_solid = new Schema::IfcSectionedSolidHorizontal(directrix, cross_sections, cross_section_positions, true/*Y is always up*/);
 
@@ -1315,8 +1330,11 @@ void CIfcModelBuilder::BuildModel(IBroker* pBroker, const CString& strFilePath, 
 {
    switch (schemaType)
    {
+#if defined EXPORT_IFC_4x3_rc3
    case Schema_4x3_rc3: BuildModel<Ifc4x3_rc3>(pBroker, strFilePath); break;
-   //case Schema_4x3_rc4: BuildModel<Ifc4x3_rc4>(pBroker, strFilePath); break;
+#else
+   case Schema_4x3_rc4: BuildModel<Ifc4x3_rc4>(pBroker, strFilePath); break;
+#endif
    default:
       ATLASSERT(false); // is there a new schema type
    }

@@ -68,8 +68,11 @@ STDMETHODIMP CPGSuperDataExporter::Export(IBroker* pBroker)
 		CString file_path = dlg.GetPathName();
 
        CIfcModelBuilder builder;
+#if defined EXPORT_IFC_4x3_rc3
        builder.BuildModel(pBroker, file_path, CIfcModelBuilder::Schema_4x3_rc3);
-       //builder.BuildModel(pBroker, file_path, CIfcModelBuilder::Schema_4x3_rc4);
+#else
+       builder.BuildModel(pBroker, file_path, CIfcModelBuilder::Schema_4x3_rc4);
+#endif
    }
 
    return S_OK;

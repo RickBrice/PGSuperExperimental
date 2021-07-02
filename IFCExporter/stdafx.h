@@ -44,3 +44,5 @@ extern CComModule _Module;
 #include "F:/IfcOpenShell/src/ifcparse/Ifc4x3_rc2.h"
 #include "F:/IfcOpenShell/src/ifcparse/Ifc4x3_rc3.h"
 #include "F:/IfcOpenShell/src/ifcparse/Ifc4x3_rc4.h"
+
+#define EXPORT_IFC_4x3_rc3
