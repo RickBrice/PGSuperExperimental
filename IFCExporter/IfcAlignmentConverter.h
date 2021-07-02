@@ -69,6 +69,9 @@ private:
    template <typename Schema>
    IfcHierarchyHelper<Schema> CreateFile(IBroker* pBroker, const CString& strFilePath);
 
+   Float64 GetStartDistAlong(Ifc4x3_rc2::IfcAlignmentHorizontal* pHorizontal);
+   Float64 GetStartDistAlong(Ifc4x3_rc3::IfcAlignmentHorizontal* pHorizontal);
+   Float64 GetStartDistAlong(Ifc4x3_rc4::IfcAlignmentHorizontal* pHorizontal);
 
    template <typename Schema>
    void LoadAlignment(typename Schema::IfcAlignment* pAlignment);
@@ -137,6 +140,7 @@ private:
 
    void CheckSpiralType_4x3(Ifc4x3_rc2::IfcAlignmentHorizontalSegment* pSpiral);
    void CheckSpiralType_4x3(Ifc4x3_rc3::IfcAlignmentHorizontalSegment* pSpiral);
+   void CheckSpiralType_4x3(Ifc4x3_rc4::IfcAlignmentHorizontalSegment* pSpiral);
 
    //// NOTE: Not converting LandXML to cross slope data. This struct and the functions that follow are
    //// trial implementations, but they don't work.
