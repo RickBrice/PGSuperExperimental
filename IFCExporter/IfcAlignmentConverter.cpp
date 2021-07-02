@@ -3,6 +3,7 @@
 #include "IfcAlignmentConverterException.h"
 
 #include <MFCTools\Prompts.h>
+#include <EAF\EAFAutoProgress.h>
 
 // Constants for tracking the state of converting the profile data
 #define PROFILE_NOT_STARTED -1
@@ -455,16 +456,68 @@ bool CIfcAlignmentConverter::IsValidAlignment_4x3(IfcParse::IfcFile& file,typena
    return true;
 }
 
+// Here is a good reference to redirecting cout
+// https://stackoverflow.com/questions/4810516/c-redirecting-stdout
+#include <mutex>
+class ProgressStringBuf : public std::stringbuf
+{
+public:
+    ProgressStringBuf() : _accum(""), _lineNum(0), m_pProgress(nullptr) {};
+    void SetProgress(IProgress* pProgress) { m_pProgress = pProgress; }
+protected:
+    virtual std::streamsize xsputn(const char* s, std::streamsize num)
+    {
+        std::mutex m;
+        std::lock_guard<std::mutex> lg(m);
+
+        //// Prepend with the line number
+        std::string str(s, (const uint32_t)num);
+        //str = std::to_string(_lineNum) + ": " + str + "\r\n";
+
+        //// Accumulate the latest text to the front
+        //_accum = str + _accum;
+        _accum = str;
+
+        // Write to the Win32 dialog edit control.
+        m_pProgress->UpdateMessage((LPCTSTR)(std::_tstring(_accum.begin(), _accum.end())).c_str());
+
+        _lineNum++;
+        return(num);
+    }
+
+private:
+    std::string _accum;
+    uint32_t _lineNum;
+    IProgress* m_pProgress;
+};
+
+class ProgressStream : public std::ostream
+{
+public:
+    ProgressStream() : std::ostream(&_progress) {};
+    void SetProgress(IProgress* pProgress) { _progress.SetProgress(pProgress); }
+private:
+    ProgressStringBuf _progress;
+};
+
 HRESULT CIfcAlignmentConverter::ConvertToPGSuper(IBroker* pBroker, CString& strFilePath)
 {
-    // Here is a good reference to redirecting cout to a dialog edit control
-    // https://stackoverflow.com/questions/4810516/c-redirecting-stdout
+    USES_CONVERSION;
 
-    std::ostringstream os;
-    Logger::SetOutput(&os, &os);
+    GET_IFACE2(pBroker, IProgress, pProgress);
+    CEAFAutoProgress ap(pProgress);
 
-   USES_CONVERSION;
-   IfcParse::IfcFile file(T2A(strFilePath.GetBuffer()));
+    auto del = [&](std::streambuf* p) {std::cout.rdbuf(p); };
+    std::unique_ptr<std::streambuf, decltype(del)> origBuffer(std::cout.rdbuf(), del);
+    ProgressStream p;
+    p.SetProgress(pProgress);
+
+    p.copyfmt(std::cout);
+    std::cout.rdbuf(p.rdbuf());
+
+    Logger::SetOutput(&std::cout, &std::cout);
+
+    IfcParse::IfcFile file(T2A(strFilePath.GetBuffer()));
 
    if (!file.good())
    {
@@ -472,7 +525,7 @@ HRESULT CIfcAlignmentConverter::ConvertToPGSuper(IBroker* pBroker, CString& strF
       return S_OK;
    }
 
-   AfxMessageBox(A2T(os.str().c_str()),MB_OK);
+   pProgress->UpdateMessage(_T("Converting semantic alignment definition."));
 
    AlignmentData2 alignment_data;
    ProfileData2 profile_data;
@@ -520,6 +573,8 @@ HRESULT CIfcAlignmentConverter::ConvertToPGSuper(IBroker* pBroker, CString& strF
 
    if (bResult)
    {
+       pProgress->UpdateMessage(_T("Updating alignment model."));
+
       GET_IFACE2(pBroker, IEvents, pEvents);
       pEvents->HoldEvents();
 
