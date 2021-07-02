@@ -599,28 +599,30 @@ HRESULT CIfcAlignmentConverter::ConvertToPGSuper(IBroker* pBroker, CString& strF
 {
     USES_CONVERSION;
 
-    GET_IFACE2(pBroker, IProgress, pProgress);
-    CEAFAutoProgress ap(pProgress);
+    std::unique_ptr<IfcParse::IfcFile> pFile = nullptr;
 
-    auto del = [&](std::streambuf* p) {std::cout.rdbuf(p); };
-    std::unique_ptr<std::streambuf, decltype(del)> origBuffer(std::cout.rdbuf(), del);
-    ProgressStream p;
-    p.SetProgress(pProgress);
+    { // scope the progress window so it closes automatically when we are done with it
+        GET_IFACE2(pBroker, IProgress, pProgress);
+        CEAFAutoProgress ap(pProgress);
 
-    p.copyfmt(std::cout);
-    std::cout.rdbuf(p.rdbuf());
+        auto del = [&](std::streambuf* p) {std::cout.rdbuf(p); };
+        std::unique_ptr<std::streambuf, decltype(del)> origBuffer(std::cout.rdbuf(), del);
+        ProgressStream p;
+        p.SetProgress(pProgress);
 
-    Logger::SetOutput(&std::cout, &std::cout);
+        p.copyfmt(std::cout);
+        std::cout.rdbuf(p.rdbuf());
 
-    IfcParse::IfcFile file(T2A(strFilePath.GetBuffer()));
+        Logger::SetOutput(&std::cout, &std::cout);
 
-   if (!file.good())
-   {
-      AfxMessageBox(_T("Unable to parse .ifc file"));
-      return S_OK;
-   }
+        pFile = std::make_unique<IfcParse::IfcFile>(T2A(strFilePath.GetBuffer()));
 
-   pProgress->UpdateMessage(_T("Converting semantic alignment definition."));
+        if (!pFile->good())
+        {
+            AfxMessageBox(_T("Unable to parse .ifc file"));
+            return S_OK;
+        }
+    }
 
    AlignmentData2 alignment_data;
    ProfileData2 profile_data;
@@ -628,31 +630,31 @@ HRESULT CIfcAlignmentConverter::ConvertToPGSuper(IBroker* pBroker, CString& strF
 
    m_Notes.clear();
 
-   auto strSchemaName = file.schema()->name();
+   auto strSchemaName = pFile->schema()->name();
    bool bResult = false;
    if (strSchemaName == std::string("IFC4X1"))
    {
-      bResult = ConvertToPGSuper<Ifc4x1>(file, &alignment_data, &profile_data, &section_data);
+      bResult = ConvertToPGSuper<Ifc4x1>(*pFile, &alignment_data, &profile_data, &section_data);
    }
    else if (strSchemaName == std::string("IFC4X2"))
    {
-      bResult = ConvertToPGSuper<Ifc4x2>(file, &alignment_data, &profile_data, &section_data);
+      bResult = ConvertToPGSuper<Ifc4x2>(*pFile, &alignment_data, &profile_data, &section_data);
    }
    else if (strSchemaName == std::string("IFC4X3_RC1"))
    {
-      bResult = ConvertToPGSuper<Ifc4x3_rc1>(file, &alignment_data, &profile_data, &section_data);
+      bResult = ConvertToPGSuper<Ifc4x3_rc1>(*pFile, &alignment_data, &profile_data, &section_data);
    }
    else if (strSchemaName == std::string("IFC4X3_RC2"))
    {
-      bResult = ConvertToPGSuper_4x3<Ifc4x3_rc2>(file, &alignment_data, &profile_data, &section_data);
+      bResult = ConvertToPGSuper_4x3<Ifc4x3_rc2>(*pFile, &alignment_data, &profile_data, &section_data);
    }
    else if (strSchemaName == std::string("IFC4X3_RC3"))
    {
-      bResult = ConvertToPGSuper_4x3<Ifc4x3_rc3>(file, &alignment_data, &profile_data, &section_data);
+      bResult = ConvertToPGSuper_4x3<Ifc4x3_rc3>(*pFile, &alignment_data, &profile_data, &section_data);
    }
    else if (strSchemaName == std::string("IFC4X3_RC4"))
    {
-       bResult = ConvertToPGSuper_4x3<Ifc4x3_rc4>(file, &alignment_data, &profile_data, &section_data);
+       bResult = ConvertToPGSuper_4x3<Ifc4x3_rc4>(*pFile, &alignment_data, &profile_data, &section_data);
    }
    else
    {
@@ -672,8 +674,6 @@ HRESULT CIfcAlignmentConverter::ConvertToPGSuper(IBroker* pBroker, CString& strF
 
    if (bResult)
    {
-       pProgress->UpdateMessage(_T("Updating alignment model."));
-
       GET_IFACE2(pBroker, IEvents, pEvents);
       pEvents->HoldEvents();
 
