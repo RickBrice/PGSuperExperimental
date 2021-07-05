@@ -852,11 +852,7 @@ typename Schema::IfcProduct* CreateGirderSegment_4x3(IBroker* pBroker, const CSe
     auto alignment_representation = alignment->Representation();
     auto representation = *(alignment_representation->Representations()->begin());
     auto representation_item = *(representation->Items()->begin());
-#if defined APPROXIMATE_ALIGNMENT_GEOMETRY
-    auto directrix = representation_item->as<Schema::IfcPolyline>();
-#else
-    auto directrix = representation_item->as<Schema::IfcGradientCurve>();
-#endif
+    auto directrix = representation_item->as<Schema::IfcCurve>();
 
 
     auto relative_placement = new Schema::IfcAxis2PlacementLinear(new Schema::IfcCartesianPoint(std::vector<double>{0, 0, 0}), new Schema::IfcDirection(std::vector<double>{ 0, 0, 1 }), new Schema::IfcDirection(std::vector<double>{1, 0, 0}));
@@ -1037,11 +1033,7 @@ typename Schema::IfcProduct* CreateClosureJoint_4x3(IBroker* pBroker, const CClo
     auto alignment_representation = alignment->Representation();
     auto representation = *(alignment_representation->Representations()->begin());
     auto representation_item = *(representation->Items()->begin());
-#if defined APPROXIMATE_ALIGNMENT_GEOMETRY
-    auto directrix = representation_item->as<Schema::IfcPolyline>();
-#else
-    auto directrix = representation_item->as<Schema::IfcGradientCurve>();
-#endif
+    auto directrix = representation_item->as<Schema::IfcCurve>();
 
 
     auto relative_placement = new Schema::IfcAxis2PlacementLinear(new Schema::IfcCartesianPoint(std::vector<double>{0, 0, 0}), new Schema::IfcDirection(std::vector<double>{ 0, 0, 1 }), new Schema::IfcDirection(std::vector<double>{1, 0, 0}));
@@ -1116,11 +1108,7 @@ typename Schema::IfcProduct* CreateDeck_4x3(IBroker* pBroker, IfcHierarchyHelper
    auto alignment_representation = alignment->Representation();
    auto representation = *(alignment_representation->Representations()->begin());
    auto representation_item = *(representation->Items()->begin());
-#if defined APPROXIMATE_ALIGNMENT_GEOMETRY
-   auto directrix = representation_item->as<Schema::IfcPolyline>();
-#else
-   auto directrix = representation_item->as<Schema::IfcGradientCurve>();
-#endif
+   auto directrix = representation_item->as<Schema::IfcCurve>();
 
    Float64 startStation, startElevation, startGrade;
    CComPtr<IPoint2d> startPoint;
@@ -1248,11 +1236,7 @@ typename Schema::IfcProduct* CreateRailingSystem_4x3(IBroker* pBroker, IfcHierar
        auto alignment_representation = alignment->Representation();
        auto representation = *(alignment_representation->Representations()->begin());
        auto representation_item = *(representation->Items()->begin());
-#if defined APPROXIMATE_ALIGNMENT_GEOMETRY
-       auto directrix = representation_item->as<Schema::IfcPolyline>();
-#else
-       auto directrix = representation_item->as<Schema::IfcGradientCurve>();
-#endif
+       auto directrix = representation_item->as<Schema::IfcCurve>();
 
        Float64 startStation, startElevation, startGrade;
        CComPtr<IPoint2d> startPoint;
@@ -1304,12 +1288,8 @@ typename Schema::IfcBridge* CreateBridge_4x3(IBroker* pBroker, IfcHierarchyHelpe
    auto representation = alignment->Representation();
    auto representations = representation->Representations();
    auto items = (*(representations->begin()))->Items();
-   auto item = *(items->begin());
-#if defined APPROXIMATE_ALIGNMENT_GEOMETRY
-   auto directrix = item->as<Schema::IfcPolyline>();
-#else
-   auto directrix = item->as<Schema::IfcGradientCurve>();
-#endif
+   auto representation_item = *(items->begin());
+   auto directrix = representation_item->as<Schema::IfcCurve>();
 
    GET_IFACE2(pBroker, IBridge, pBridge);
    Float64 startStation = pBridge->GetPierStation(0);
