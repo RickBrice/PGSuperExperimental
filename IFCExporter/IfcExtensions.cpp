@@ -48,11 +48,13 @@
 #include <IFace\Bridge.h>
 #include <IFace\Intervals.h>
 
+// Build environment setup
+// Define the environment variable IFCOPENSHELL_DIR with the root location of IfcOpenShell (e.g. F:\IfcOpenShell)
 
 #if defined _DEBUG
-#pragma comment(lib,"F:/IfcOpenShell/_build-vs2015-x64/Debug/IfcParse.lib")
+#pragma comment(lib,"Debug/IfcParse.lib")
 #else
-#pragma comment(lib,"F:/IfcOpenShell/_build-vs2015-x64/Release/IfcParse.lib")
+#pragma comment(lib,"Release/IfcParse.lib")
 #endif
 
 CComModule _Module;
