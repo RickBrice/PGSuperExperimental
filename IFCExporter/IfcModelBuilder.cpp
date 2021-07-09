@@ -150,7 +150,7 @@ void CreateHorizontalAlignment_4x3(IBroker* pBroker, IfcHierarchyHelper<Schema>&
    IndexType nHCurves = pAlignment->GetCurveCount();
    for (IndexType i = 0; i < nHCurves; i++)
    {
-      CComPtr<IHorzCurve> curve;
+      CComPtr<ICompoundCurve> curve;
       pAlignment->GetCurve(i, pgsTypes::pcGlobal, &curve);
 
       CComPtr<IPoint2d> pntTS;

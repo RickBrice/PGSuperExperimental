@@ -841,7 +841,7 @@ void CIfcAlignmentConverter::LoadAlignment(typename Schema::IfcAlignment* pAlign
    m_AlignmentData.Direction = 0.00;
    m_AlignmentData.xRefPoint = 0.00;
    m_AlignmentData.yRefPoint = 0.00;
-   m_AlignmentData.HorzCurves.clear();
+   m_AlignmentData.CompoundCurves.clear();
 
    auto axis = pAlignment->Axis();
    auto curve = axis->as<Schema::IfcAlignmentCurve>();
@@ -1039,7 +1039,7 @@ void CIfcAlignmentConverter::LoadAlignment_4x3(IfcParse::IfcFile& file, typename
     m_AlignmentData.xRefPoint = 0.00;
     m_AlignmentData.yRefPoint = 0.00;
     m_AlignmentData.RefStation = 0.00;
-    m_AlignmentData.HorzCurves.clear();
+    m_AlignmentData.CompoundCurves.clear();
 
     Schema::IfcAlignmentHorizontal* horizontal_alignment = GetAlignmentHorizontal(pAlignment);
     ATLASSERT(horizontal_alignment); // should have found one
@@ -1381,7 +1381,7 @@ Float64 CIfcAlignmentConverter::OnLine(Float64 sx,Float64 sy,Float64 startStatio
       if (m_LastAlignmentType != Curve)
       {
          // add an angle point
-         HorzCurveData hcData;
+         CompoundCurveData hcData;
          hcData.PIStation = startStation;
          hcData.Radius = 0;
          hcData.EntrySpiral = 0;
@@ -1389,7 +1389,7 @@ Float64 CIfcAlignmentConverter::OnLine(Float64 sx,Float64 sy,Float64 startStatio
          hcData.bFwdTangent = true;
          hcData.FwdTangent = startDirection;
 
-         m_AlignmentData.HorzCurves.push_back(hcData);
+         m_AlignmentData.CompoundCurves.push_back(hcData);
       }
    }
 
@@ -1581,8 +1581,8 @@ Float64 CIfcAlignmentConverter::OnCurve(Float64 startStation, typename SpiralTyp
    }
 
    // create a horizontal curve object so that we can get some information from it
-   CComPtr<IHorzCurve> hc;
-   hc.CoCreateInstance(CLSID_HorzCurve);
+   CComPtr<ICompoundCurve> hc;
+   hc.CoCreateInstance(CLSID_CompoundCurve);
    hc->putref_PBT(pntStart);
    hc->putref_PI(pntPI);
    hc->putref_PFT(pntEnd);
@@ -1612,7 +1612,7 @@ Float64 CIfcAlignmentConverter::OnCurve(Float64 startStation, typename SpiralTyp
       m_bAlignmentStarted = true;
    }
 
-   HorzCurveData hcData;
+   CompoundCurveData hcData;
    hcData.EntrySpiral = entry_spiral_length;
    hcData.ExitSpiral = exit_spiral_length;
    hcData.Radius = fabs(radius);
@@ -1636,7 +1636,7 @@ Float64 CIfcAlignmentConverter::OnCurve(Float64 startStation, typename SpiralTyp
    hcData.bFwdTangent = false;
    hcData.FwdTangent = delta;
 
-   m_AlignmentData.HorzCurves.push_back(hcData);
+   m_AlignmentData.CompoundCurves.push_back(hcData);
 
    m_LastAlignmentType = Curve;
 
@@ -1826,8 +1826,8 @@ Float64 CIfcAlignmentConverter::OnCurve_4x3(Float64 startStation, typename Schem
    }
 
    // create a horizontal curve object so that we can get some information from it
-   CComPtr<IHorzCurve> hc;
-   hc.CoCreateInstance(CLSID_HorzCurve);
+   CComPtr<ICompoundCurve> hc;
+   hc.CoCreateInstance(CLSID_CompoundCurve);
    hc->putref_PBT(pntStart);
    hc->putref_PI(pntPI);
    hc->putref_PFT(pntEnd);
@@ -1857,7 +1857,7 @@ Float64 CIfcAlignmentConverter::OnCurve_4x3(Float64 startStation, typename Schem
       m_bAlignmentStarted = true;
    }
 
-   HorzCurveData hcData;
+   CompoundCurveData hcData;
    hcData.EntrySpiral = entry_spiral_length;
    hcData.ExitSpiral = exit_spiral_length;
    hcData.Radius = fabs(radius);
@@ -1881,7 +1881,7 @@ Float64 CIfcAlignmentConverter::OnCurve_4x3(Float64 startStation, typename Schem
    hcData.bFwdTangent = false;
    hcData.FwdTangent = delta;
 
-   m_AlignmentData.HorzCurves.push_back(hcData);
+   m_AlignmentData.CompoundCurves.push_back(hcData);
 
    m_LastAlignmentType = Curve;
 
