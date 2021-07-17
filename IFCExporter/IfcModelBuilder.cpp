@@ -125,9 +125,9 @@ typename Schema::IfcCartesianPoint* ConvertPoint(IPoint2d* pPoint)
 
 template <typename Schema>
 #if defined APPROXIMATE_ALIGNMENT_GEOMETRY
-void CreateHorizontalAlignment_4x3(IBroker* pBroker, IfcHierarchyHelper<Schema>& file,typename Schema::IfcAlignmentHorizontal** phorizontal_alignment/*, typename Schema::IfcCompositeCurve** phorizontal_geometry_base_curve*/)
+void CreateHorizontalAlignment_4x3(IfcHierarchyHelper<Schema>& file,IBroker* pBroker, typename Schema::IfcAlignmentHorizontal** phorizontal_alignment/*, typename Schema::IfcCompositeCurve** phorizontal_geometry_base_curve*/)
 #else
-void CreateHorizontalAlignment_4x3(IBroker* pBroker, IfcHierarchyHelper<Schema>& file, typename Schema::IfcAlignmentHorizontal** phorizontal_alignment, typename Schema::IfcCompositeCurve** phorizontal_geometry_base_curve)
+void CreateHorizontalAlignment_4x3(IfcHierarchyHelper<Schema>& file,IBroker* pBroker,  typename Schema::IfcAlignmentHorizontal** phorizontal_alignment, typename Schema::IfcCompositeCurve** phorizontal_geometry_base_curve)
 #endif
 {
     boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcObjectDefinition>> alignment_segments(new IfcTemplatedEntityList<Schema::IfcObjectDefinition>());
@@ -338,9 +338,9 @@ void CreateHorizontalAlignment_4x3(IBroker* pBroker, IfcHierarchyHelper<Schema>&
 
 template <typename Schema>
 #if defined APPROXIMATE_ALIGNMENT_GEOMETRY
-void CreateVerticalProfile_4x3(IBroker* pBroker, IfcHierarchyHelper<Schema>& file/*, typename Schema::IfcCompositeCurve* horizontal_geometry_base_curve*/, typename Schema::IfcAlignmentVertical** pvertical_profile, typename Schema::IfcProductDefinitionShape** palignment_product_definition_shape)
+void CreateVerticalProfile_4x3(IfcHierarchyHelper<Schema>& file, IBroker* pBroker, typename Schema::IfcAlignmentVertical** pvertical_profile, typename Schema::IfcProductDefinitionShape** palignment_product_definition_shape)
 #else
-void CreateVerticalProfile_4x3(IBroker* pBroker, IfcHierarchyHelper<Schema>& file, typename Schema::IfcCompositeCurve* horizontal_geometry_base_curve, typename Schema::IfcAlignmentVertical** pvertical_profile, typename Schema::IfcProductDefinitionShape** palignment_product_definition_shape)
+void CreateVerticalProfile_4x3(IfcHierarchyHelper<Schema>& file, IBroker* pBroker, typename Schema::IfcCompositeCurve* horizontal_geometry_base_curve, typename Schema::IfcAlignmentVertical** pvertical_profile, typename Schema::IfcProductDefinitionShape** palignment_product_definition_shape)
 #endif
 {
     boost::shared_ptr<IfcTemplatedEntityList<typename Schema::IfcObjectDefinition>> profile_segments(new IfcTemplatedEntityList<typename Schema::IfcObjectDefinition>());
@@ -588,23 +588,23 @@ void CreateVerticalProfile_4x3(IBroker* pBroker, IfcHierarchyHelper<Schema>& fil
 }
 
 template <typename Schema>
-typename Schema::IfcAlignment* CreateAlignment_4x3(IBroker* pBroker, IfcHierarchyHelper<Schema>& file)
+typename Schema::IfcAlignment* CreateAlignment_4x3(IfcHierarchyHelper<Schema>& file, IBroker* pBroker)
 {
    USES_CONVERSION;
    Schema::IfcAlignmentHorizontal* horizontal_alignment;
 #if defined APPROXIMATE_ALIGNMENT_GEOMETRY
-   CreateHorizontalAlignment_4x3<Schema>(pBroker, file, &horizontal_alignment);
+   CreateHorizontalAlignment_4x3<Schema>(file, pBroker, &horizontal_alignment);
 #else
    Schema::IfcCompositeCurve* horizontal_geometry_base_curve;
-   CreateHorizontalAlignment_4x3<Schema>(pBroker, file, &horizontal_alignment, &horizontal_geometry_base_curve);
+   CreateHorizontalAlignment_4x3<Schema>(file, pBroker, &horizontal_alignment, &horizontal_geometry_base_curve);
 #endif
 
    Schema::IfcAlignmentVertical* vertical_profile;
    Schema::IfcProductDefinitionShape* alignment_product_definition_shape;
 #if defined APPROXIMATE_ALIGNMENT_GEOMETRY
-   CreateVerticalProfile_4x3<Schema>(pBroker, file, &vertical_profile, &alignment_product_definition_shape);
+   CreateVerticalProfile_4x3<Schema>(file, pBroker, &vertical_profile, &alignment_product_definition_shape);
 #else
-   CreateVerticalProfile_4x3<Schema>(pBroker, file, horizontal_geometry_base_curve, &vertical_profile, &alignment_product_definition_shape);
+   CreateVerticalProfile_4x3<Schema>(file, pBroker, horizontal_geometry_base_curve, &vertical_profile, &alignment_product_definition_shape);
 #endif
 
    Schema::IfcObjectPlacement* local_placement;
@@ -634,7 +634,175 @@ typename Schema::IfcAlignment* CreateAlignment_4x3(IBroker* pBroker, IfcHierarch
 }
 
 template <typename Schema>
-typename Schema::IfcProduct* CreateGirderSegment_4x3(IBroker* pBroker, const CSegmentKey& segmentKey, IfcHierarchyHelper<Schema>& file, typename Schema::IfcAlignment* alignment)
+typename Schema::IfcProfileDef* CreateSectionProfile(IShapes* pShapes,const pgsPointOfInterest& poi,IntervalIndexType intervalIdx)
+{
+   CComPtr<IShape> shape;
+   IndexType gdrIdx, slabIdx;
+   pShapes->GetSegmentShape(intervalIdx, poi, true/*orient*/, pgsTypes::scGirder, &shape, &gdrIdx, &slabIdx);
+
+   CComQIPtr<ICompositeShape> composite(shape);
+   CComPtr<ICompositeShapeItem> shapeItem;
+   composite->get_Item(gdrIdx, &shapeItem);
+
+   CComPtr<IShape> gdrShape;
+   CComPtr<IShape> _gdrShape;
+   shapeItem->get_Shape(&_gdrShape);
+   CComQIPtr<ICompositeShape> compGdrShape(_gdrShape);
+   if (compGdrShape)
+   {
+      CComPtr<ICompositeShapeItem> compItem;
+      compGdrShape->get_Item(0, &compItem);
+      compItem->get_Shape(&gdrShape);
+   }
+   else
+   {
+      gdrShape = _gdrShape;
+   }
+
+   CComPtr<IPoint2dCollection> polyPoints;
+   gdrShape->get_PolyPoints(&polyPoints);
+
+   if (GetVertexOrdering(gdrShape) == CLOCKWISE)
+   {
+      polyPoints->Reverse();
+   }
+
+   boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcCartesianPoint>> points(new IfcTemplatedEntityList<Schema::IfcCartesianPoint>());
+   IndexType nPoints;
+   polyPoints->get_Count(&nPoints);
+   for (IndexType idx = 0; idx < nPoints; idx++)
+   {
+      CComPtr<IPoint2d> point;
+      polyPoints->get_Item(idx, &point);
+      Float64 x, y;
+      point->Location(&x, &y);
+
+      // NOTE: Use -x because PGSuper has X > 0 to the right looking down station at the start of the girder and IFC has X < 0
+      points->push(new Schema::IfcCartesianPoint(std::vector<double>{-x, y}));
+   }
+
+   // make sure the polygon is closed
+   CComPtr<IPoint2d> first, last;
+   polyPoints->get_Item(0, &first);
+   polyPoints->get_Item(nPoints - 1, &last);
+   if (first->SameLocation(last) == S_FALSE)
+   {
+      points->push(*(points->begin()));
+   }
+
+   auto polyline = new Schema::IfcPolyline(points);
+   auto girder_section = new Schema::IfcArbitraryClosedProfileDef(Schema::IfcProfileTypeEnum::IfcProfileType_AREA, std::string("CrossSectionProfile"), polyline);
+
+   return girder_section;
+}
+
+template <typename Schema> 
+boost::shared_ptr<IfcTemplatedEntityList<typename Schema::IfcObjectDefinition>> CreateStrands(IfcHierarchyHelper<Schema>& file, IBroker* pBroker,const pgsPointOfInterest& poiStart,const pgsPointOfInterest& poiEnd,typename Schema::IfcObjectPlacement* strand_placement)
+{
+   boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcObjectDefinition>> strands(new IfcTemplatedEntityList<Schema::IfcObjectDefinition>());
+
+   const CSegmentKey& segmentKey(poiStart.GetSegmentKey());
+
+   GET_IFACE2(pBroker, IPointOfInterest, pPoi);
+   GET_IFACE2(pBroker, IStrandGeometry, pStrandGeom);
+   GET_IFACE2_NOCHECK(pBroker, IMaterials, pMaterials);
+
+   PoiList vHP;
+   pPoi->GetPointsOfInterest(segmentKey, POI_HARPINGPOINT, &vHP);
+   std::array<std::string, 3> strStrandType{ "Straight","Harped","Temporary" };
+   for (int i = 0; i < 3; i++)
+   {
+      pgsTypes::StrandType strandType = pgsTypes::StrandType(i);
+
+      StrandIndexType nStrands = pStrandGeom->GetStrandCount(segmentKey, strandType);
+      if (nStrands == 0) continue;
+
+      const auto* pStrand = pMaterials->GetStrandMaterial(segmentKey, strandType);
+
+      CComPtr<IPoint2dCollection> strand_points_start, strand_points_end;
+      pStrandGeom->GetStrandPositions(poiStart, strandType, &strand_points_start);
+      pStrandGeom->GetStrandPositions(poiEnd, strandType, &strand_points_end);
+
+      std::vector<CComPtr<IPoint2dCollection>> strands_at_harp_points;
+      if (strandType == pgsTypes::Harped)
+      {
+         for (const pgsPointOfInterest& poi : vHP)
+         {
+            CComPtr<IPoint2dCollection> points;
+            pStrandGeom->GetStrandPositions(poi, strandType, &points);
+            strands_at_harp_points.push_back(points);
+         }
+      }
+
+      boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcRepresentationItem>> strand_representation_items(new IfcTemplatedEntityList<Schema::IfcRepresentationItem>());
+      for (StrandIndexType strandIdx = 0; strandIdx < nStrands; strandIdx++)
+      {
+         boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcCartesianPoint>> points(new IfcTemplatedEntityList<Schema::IfcCartesianPoint>());
+
+         CComPtr<IPoint2d> pntStart;
+         strand_points_start->get_Item(strandIdx, &pntStart);
+
+         Float64 X, Y;
+         pntStart->Location(&X, &Y);
+         auto start_point = new Schema::IfcCartesianPoint(std::vector<Float64>{-X, Y, poiStart.GetDistFromStart()});
+
+         points->push(start_point);
+
+         auto begin = std::begin(strands_at_harp_points);
+         auto end = std::end(strands_at_harp_points);
+         for (auto iter = begin; iter != end; iter++)
+         {
+            auto harp_points(*iter);
+            CComPtr<IPoint2d> point;
+            harp_points->get_Item(strandIdx, &point);
+
+            auto i = std::distance(begin, iter);
+            const pgsPointOfInterest& poi = vHP[i];
+
+            point->Location(&X, &Y);
+            auto hp = new Schema::IfcCartesianPoint(std::vector<Float64>{-X, Y, poi.GetDistFromStart()});
+            points->push(hp);
+         }
+
+         CComPtr<IPoint2d> pntEnd;
+         strand_points_end->get_Item(strandIdx, &pntEnd);
+
+         pntEnd->Location(&X, &Y);
+         auto end_point = new Schema::IfcCartesianPoint(std::vector<Float64>{-X, Y, poiEnd.GetDistFromStart()});
+         points->push(end_point);
+
+         auto directrix = new Schema::IfcPolyline(points);
+         file.addEntity(directrix);
+
+         auto swept_disk_solid = new Schema::IfcSweptDiskSolid(directrix, pStrand->GetNominalDiameter() / 2, boost::none, boost::none, boost::none);
+         file.addEntity(swept_disk_solid);
+         strand_representation_items->push(swept_disk_solid);
+      }
+
+      auto geometric_representation_context = file.getSingle<Schema::IfcGeometricRepresentationContext>();
+      auto strand_shape_representation = new Schema::IfcShapeRepresentation(geometric_representation_context, std::string("Body"), std::string("AdvancedSweptSolid"), strand_representation_items);
+      boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcRepresentation>> strand_shape_representation_list(new IfcTemplatedEntityList<Schema::IfcRepresentation>());
+      strand_shape_representation_list->push(strand_shape_representation);
+      auto strand_product_definition_shape = new Schema::IfcProductDefinitionShape(boost::none, boost::none, strand_shape_representation_list);
+
+      auto owner_history = file.getSingle<Schema::IfcOwnerHistory>();
+      auto strand = new Schema::IfcTendon(IfcParse::IfcGlobalId(), owner_history, strStrandType[strandType], boost::none, boost::none, strand_placement, strand_product_definition_shape, boost::none, boost::none,
+         Schema::IfcTendonTypeEnum::IfcTendonType_STRAND,
+         pStrand->GetNominalDiameter(),
+         pStrand->GetNominalArea(),
+         pStrandGeom->GetPjack(segmentKey, strandType),
+         pStrandGeom->GetJackingStress(segmentKey, strandType),
+         boost::none, boost::none, boost::none);
+      file.addEntity(strand);
+
+      strands->push(strand);
+   }
+
+   return strands;
+}
+
+template <typename Schema>
+typename Schema::IfcProduct* CreateGirderSegment_4x3(IfcHierarchyHelper<Schema>& file, IBroker* pBroker, const CSegmentKey& segmentKey, typename Schema::IfcAlignment* alignment)
 {
     USES_CONVERSION;
 
@@ -708,15 +876,15 @@ typename Schema::IfcProduct* CreateGirderSegment_4x3(IBroker* pBroker, const CSe
     pBridge->GetPoint(poiStart, pgsTypes::pcGlobal, &pntStart);
     pBridge->GetPoint(poiEnd, pgsTypes::pcGlobal, &pntEnd);
 
-    GET_IFACE2(pBroker, IGirder, pGirder);
-    Float64 Zs = pGirder->GetTopGirderChordElevation(poiStart);
-    Float64 Ze = pGirder->GetTopGirderChordElevation(poiEnd);
-
     Float64 Xs, Ys;
     pntStart->Location(&Xs, &Ys);
 
     Float64 Xe, Ye;
     pntEnd->Location(&Xe, &Ye);
+
+    GET_IFACE2(pBroker, IGirder, pGirder);
+    Float64 Zs = pGirder->GetTopGirderChordElevation(poiStart);
+    Float64 Ze = pGirder->GetTopGirderChordElevation(poiEnd);
 
     CComPtr<IDirection> segment_direction;
     pBridge->GetSegmentBearing(segmentKey, &segment_direction);
@@ -728,8 +896,10 @@ typename Schema::IfcProduct* CreateGirderSegment_4x3(IBroker* pBroker, const CSe
     Float64 Ls = pBridge->GetSegmentLength(segmentKey);
 
     boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcCartesianPoint>> girder_line_points(new IfcTemplatedEntityList<Schema::IfcCartesianPoint>());
-    girder_line_points->push(new Schema::IfcCartesianPoint(std::vector<double>{Xs, Ys, Zs}));
-    girder_line_points->push(new Schema::IfcCartesianPoint(std::vector<double>{Xe, Ye, Ze}));
+    //girder_line_points->push(new Schema::IfcCartesianPoint(std::vector<double>{Xs, Ys, Zs}));
+    //girder_line_points->push(new Schema::IfcCartesianPoint(std::vector<double>{Xe, Ye, Ze}));
+    girder_line_points->push(new Schema::IfcCartesianPoint(std::vector<double>{0, 0, 0}));
+    girder_line_points->push(new Schema::IfcCartesianPoint(std::vector<double>{Ls, 0, 0}));
     auto girder_line = new Schema::IfcPolyline(girder_line_points);
     file.addEntity(girder_line);
 
@@ -750,80 +920,50 @@ typename Schema::IfcProduct* CreateGirderSegment_4x3(IBroker* pBroker, const CSe
     //objStartSkew->get_Value(&start_skew);
     //objEndSkew->get_Value(&end_skew);
 
+    boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcRepresentationItem>> representation_items(new IfcTemplatedEntityList<Schema::IfcRepresentationItem>());
     GET_IFACE2(pBroker, IShapes, pShapes);
+    // extrusion (but this doesn't work for tapered sections like spliced girders with parabolic haunch)
+    //auto iter = std::begin(vPoi);
+    //pgsPointOfInterest prevPoi(*iter);
+    //auto prev_girder_profile = CreateSectionProfile<Schema>(pShapes, prevPoi, intervalIdx);
+    //iter++;
+    //auto end = std::end(vPoi);
+    //for(; iter != end; iter++)
+    //{
+    //   const pgsPointOfInterest& poi(*iter);
+    //   auto girder_profile = CreateSectionProfile<Schema>(pShapes, poi, intervalIdx);
+
+    //   // extrude the shape in the global X direction
+    //   auto position = new Ifc4x3_rc3::IfcAxis2Placement3D(
+    //      new Schema::IfcCartesianPoint(std::vector<Float64>{prevPoi.GetDistFromStart(), 0, 0}), // begin extrusion dist from start from (0,0,0)
+    //      new Schema::IfcDirection(std::vector<Float64>{1, 0, 0}), // direction the Z-axis of the extrsion in the global X direction
+    //      new Schema::IfcDirection(std::vector<Float64>{0, 1, 0}) // direction the X-axis of the cross section in the global Y direction
+    //   );
+
+    //   Float64 depth = poi.GetDistFromStart() - prevPoi.GetDistFromStart();
+    //   auto extruded_direction = new Schema::IfcDirection(std::vector<Float64>{0, 0, 1}); // extrude in the Z-direction relative to the placement (the placement puts the Z-axis in the global X direction)
+    //   //auto solid = new Schema::IfcExtrudedAreaSolid(prev_girder_profile, position, extruded_direction, depth);
+    //   auto solid = new Schema::IfcExtrudedAreaSolidTapered(prev_girder_profile, position, extruded_direction, depth, girder_profile);
+    //   representation_items->push(solid);
+
+    //   prevPoi = poi;
+    //   prev_girder_profile = girder_profile;
+    //}
+
     for (const pgsPointOfInterest& poi : vPoi)
     {
 #if defined EXPORT_IFC_4x3_rc3
-        cross_section_positions->push(new Ifc4x3_rc3::IfcNonNegativeLengthMeasure(poi.GetDistFromStart()));
+       cross_section_positions->push(new Ifc4x3_rc3::IfcNonNegativeLengthMeasure(poi.GetDistFromStart()));
 #else
-        cross_section_positions->push(new Schema::IfcAxis2PlacementLinear(new Schema::IfcCartesianPoint(std::vector<double>{poi.GetDistFromStart(), 0}), nullptr, nullptr));
+       cross_section_positions->push(new Schema::IfcAxis2PlacementLinear(new Schema::IfcCartesianPoint(std::vector<double>{poi.GetDistFromStart(), 0}), nullptr, nullptr));
 #endif
-
-
-        CComPtr<IShape> shape;
-        IndexType gdrIdx, slabIdx;
-        pShapes->GetSegmentShape(intervalIdx, poi, true/*orient*/, pgsTypes::scGirder, &shape, &gdrIdx, &slabIdx);
-
-        CComQIPtr<ICompositeShape> composite(shape);
-        CComPtr<ICompositeShapeItem> shapeItem;
-        composite->get_Item(gdrIdx, &shapeItem);
-
-        CComPtr<IShape> gdrShape;
-        CComPtr<IShape> _gdrShape;
-        shapeItem->get_Shape(&_gdrShape);
-        CComQIPtr<ICompositeShape> compGdrShape(_gdrShape);
-        if (compGdrShape)
-        {
-            CComPtr<ICompositeShapeItem> compItem;
-            compGdrShape->get_Item(0, &compItem);
-            compItem->get_Shape(&gdrShape);
-        }
-        else
-        {
-            gdrShape = _gdrShape;
-        }
-
-        CComPtr<IPoint2dCollection> polyPoints;
-        gdrShape->get_PolyPoints(&polyPoints);
-
-        if (GetVertexOrdering(gdrShape) == CLOCKWISE)
-        {
-            polyPoints->Reverse();
-        }
-
-        boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcCartesianPoint>> points(new IfcTemplatedEntityList<Schema::IfcCartesianPoint>());
-        IndexType nPoints;
-        polyPoints->get_Count(&nPoints);
-        for (IndexType idx = 0; idx < nPoints; idx++)
-        {
-            CComPtr<IPoint2d> point;
-            polyPoints->get_Item(idx, &point);
-            Float64 x, y;
-            point->Location(&x, &y);
-
-            // NOTE: Use -x because PGSuper has X > 0 to the right looking down station at the start of the girder and IFC has X < 0
-            points->push(new Schema::IfcCartesianPoint(std::vector<double>{-x, y}));
-        }
-
-        // make sure the polygon is closed
-        CComPtr<IPoint2d> first, last;
-        polyPoints->get_Item(0, &first);
-        polyPoints->get_Item(nPoints - 1, &last);
-        if (first->SameLocation(last) == S_FALSE)
-        {
-            points->push(*(points->begin()));
-        }
-
-        auto polyline = new Schema::IfcPolyline(points);
-        auto girder_section = new Schema::IfcArbitraryClosedProfileDef(Schema::IfcProfileTypeEnum::IfcProfileType_AREA, std::string("CrossSectionProfile"), polyline);
-
-        cross_sections->push(girder_section);
+       auto girder_section = CreateSectionProfile<Schema>(pShapes, poi, intervalIdx);
+       cross_sections->push(girder_section);
     }
 
     auto sectioned_solid = new Schema::IfcSectionedSolidHorizontal(girder_line, cross_sections, cross_section_positions, true/*fixed vertical axis*/);
-
-    boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcRepresentationItem>> representation_items(new IfcTemplatedEntityList<Schema::IfcRepresentationItem>());
     representation_items->push(sectioned_solid);
+
 
     auto geometric_representation_context = file.getSingle<Schema::IfcGeometricRepresentationContext>();
     boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcRepresentation>> shape_representation_list(new IfcTemplatedEntityList<Schema::IfcRepresentation>());
@@ -845,6 +985,8 @@ typename Schema::IfcProduct* CreateGirderSegment_4x3(IBroker* pBroker, const CSe
     pBridge->GetStationAndOffset(poiStart, &startSegmentStation, &startSegmentOffset);
 
     GET_IFACE2(pBroker, IRoadway, pAlignment);
+    Float64 startSegmentElevation = pAlignment->GetElevation(startSegmentStation, 0.0);
+
     Float64 startStation, startElevation, startGrade;
     CComPtr<IPoint2d> startPoint;
     pAlignment->GetStartPoint(2, &startStation, &startElevation, &startGrade, &startPoint);
@@ -855,19 +997,40 @@ typename Schema::IfcProduct* CreateGirderSegment_4x3(IBroker* pBroker, const CSe
     auto directrix = representation_item->as<Schema::IfcCurve>();
 
 
-    auto relative_placement = new Schema::IfcAxis2PlacementLinear(new Schema::IfcCartesianPoint(std::vector<double>{0, 0, 0}), new Schema::IfcDirection(std::vector<double>{ 0, 0, 1 }), new Schema::IfcDirection(std::vector<double>{1, 0, 0}));
-    auto point_on_alignment = new Schema::IfcPointByDistanceExpression(new Schema::IfcNonNegativeLengthMeasure(startSegmentStation - startStation), 0.0, 0.0, 0.0, directrix);
-    auto cartesian_position = new Schema::IfcAxis2Placement3D(point_on_alignment, new Schema::IfcDirection(std::vector<double>{ 0, 0, 1 }), new Schema::IfcDirection(std::vector<double>{1, 0, 0}));
-    auto placement = new Schema::IfcLinearPlacement(bridge_placement, relative_placement, cartesian_position);
+    auto point_on_alignment = new Schema::IfcPointByDistanceExpression(new Schema::IfcNonNegativeLengthMeasure(startSegmentStation - startStation), -startSegmentOffset, Zs - startSegmentElevation, 0.0, directrix);
+    auto relative_placement = new Schema::IfcAxis2PlacementLinear(point_on_alignment, new Schema::IfcDirection(std::vector<double>{ 0, 0, 1 }), new Schema::IfcDirection(std::vector<double>{cos(direction), sin(direction), 0}));
+    auto cartesian_position = new Schema::IfcAxis2Placement3D(new Schema::IfcCartesianPoint(std::vector<double>{0, 0, 0}), new Schema::IfcDirection(std::vector<double>{ 0, 0, 1 }), new Schema::IfcDirection(std::vector<double>{1, 0, 0}));
+    auto segment_placement = new Schema::IfcLinearPlacement(nullptr, relative_placement, cartesian_position);
 
-    auto segment = new Schema::IfcBeam(IfcParse::IfcGlobalId(), owner_history, segment_name, boost::none, boost::none, placement, product_definition_shape, boost::none, Schema::IfcBeamTypeEnum::IfcBeamType_GIRDER_SEGMENT);
+    auto segment = new Schema::IfcBeam(IfcParse::IfcGlobalId(), owner_history, segment_name, boost::none, boost::none, segment_placement, product_definition_shape, boost::none, Schema::IfcBeamTypeEnum::IfcBeamType_GIRDER_SEGMENT);
     file.addEntity(segment);
+
+    //
+    // begin modeling of prestressing strands
+    //
+    
+    // place strands relative to the segment
+    auto strand_placement = file.addLocalPlacement(segment_placement,
+       0,0,0, // (0,0,0) of the strands is at (0,0,0) of the segment
+       1,0,0, // direction the Z-axis of the extrsion in the global X direction 
+       0,1,0 // direction the X-axis of the cross section in the global Y direction
+    );
+
+    boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcObjectDefinition>> strands = CreateStrands<Schema>(file, pBroker, poiStart, poiEnd, strand_placement);
+
+    if (0 < strands->size())
+    {
+       auto rel_aggregates = new Schema::IfcRelAggregates(IfcParse::IfcGlobalId(), owner_history, std::string("Segment_Aggregates_Strands"), boost::none, segment, strands);
+       file.addEntity(rel_aggregates);
+    }
+
+
     return segment;
 }
 
 
 template <typename Schema>
-typename Schema::IfcProduct* CreateClosureJoint_4x3(IBroker* pBroker, const CClosureKey& closureKey, IfcHierarchyHelper<Schema>& file, typename Schema::IfcAlignment* alignment)
+typename Schema::IfcProduct* CreateClosureJoint_4x3(IfcHierarchyHelper<Schema>& file, IBroker* pBroker, const CClosureKey& closureKey, typename Schema::IfcAlignment* alignment)
 {
     USES_CONVERSION;
 
@@ -1026,6 +1189,8 @@ typename Schema::IfcProduct* CreateClosureJoint_4x3(IBroker* pBroker, const CClo
     pBridge->GetStationAndOffset(poiStart, &startSegmentStation, &startSegmentOffset);
 
     GET_IFACE2(pBroker, IRoadway, pAlignment);
+    Float64 startSegmentElevation = pAlignment->GetElevation(startSegmentStation, 0.0);
+
     Float64 startStation, startElevation, startGrade;
     CComPtr<IPoint2d> startPoint;
     pAlignment->GetStartPoint(2, &startStation, &startElevation, &startGrade, &startPoint);
@@ -1036,18 +1201,18 @@ typename Schema::IfcProduct* CreateClosureJoint_4x3(IBroker* pBroker, const CClo
     auto directrix = representation_item->as<Schema::IfcCurve>();
 
 
-    auto relative_placement = new Schema::IfcAxis2PlacementLinear(new Schema::IfcCartesianPoint(std::vector<double>{0, 0, 0}), new Schema::IfcDirection(std::vector<double>{ 0, 0, 1 }), new Schema::IfcDirection(std::vector<double>{1, 0, 0}));
-    auto point_on_alignment = new Schema::IfcPointByDistanceExpression(new Schema::IfcNonNegativeLengthMeasure(startSegmentStation - startStation), 0.0, 0.0, 0.0, directrix);
-    auto cartesian_position = new Schema::IfcAxis2Placement3D(point_on_alignment, new Schema::IfcDirection(std::vector<double>{ 0, 0, 1 }), new Schema::IfcDirection(std::vector<double>{1, 0, 0}));
-    auto placement = new Schema::IfcLinearPlacement(bridge_placement, relative_placement, cartesian_position);
+    auto point_on_alignment = new Schema::IfcPointByDistanceExpression(new Schema::IfcNonNegativeLengthMeasure(startSegmentStation - startStation), -startSegmentOffset, Zs - startSegmentElevation, 0.0, directrix);
+    auto relative_placement = new Schema::IfcAxis2PlacementLinear(point_on_alignment, new Schema::IfcDirection(std::vector<double>{ 0, 0, 1 }), new Schema::IfcDirection(std::vector<double>{cos(direction), sin(direction), 0}));
+    auto cartesian_position = new Schema::IfcAxis2Placement3D(new Schema::IfcCartesianPoint(std::vector<double>{0, 0, 0}), new Schema::IfcDirection(std::vector<double>{ 0, 0, 1 }), new Schema::IfcDirection(std::vector<double>{1, 0, 0}));
+    auto closure_placement = new Schema::IfcLinearPlacement(nullptr, relative_placement, cartesian_position);
 
-    auto segment = new Schema::IfcBeam(IfcParse::IfcGlobalId(), owner_history, segment_name, boost::none, std::string("Cast in Place Closure Joint"), placement, product_definition_shape, boost::none, Schema::IfcBeamTypeEnum::IfcBeamType_USERDEFINED);
+    auto segment = new Schema::IfcBeam(IfcParse::IfcGlobalId(), owner_history, segment_name, boost::none, std::string("Cast in Place Closure Joint"), closure_placement, product_definition_shape, boost::none, Schema::IfcBeamTypeEnum::IfcBeamType_USERDEFINED);
     file.addEntity(segment);
     return segment;
 }
 
 template <typename Schema>
-typename Schema::IfcProduct* CreateDeck_4x3(IBroker* pBroker, IfcHierarchyHelper<Schema>& file, typename Schema::IfcAlignment* alignment)
+typename Schema::IfcProduct* CreateDeck_4x3(IfcHierarchyHelper<Schema>& file, IBroker* pBroker,  typename Schema::IfcAlignment* alignment)
 {
    GET_IFACE2(pBroker, IBridge, pBridge);
 
@@ -1143,7 +1308,7 @@ typename Schema::IfcProduct* CreateDeck_4x3(IBroker* pBroker, IfcHierarchyHelper
 }
 
 template <typename Schema>
-typename Schema::IfcProduct* CreateRailingSystem_4x3(IBroker* pBroker, IfcHierarchyHelper<Schema>& file, pgsTypes::TrafficBarrierOrientation tbOrientation, typename Schema::IfcAlignment* alignment)
+typename Schema::IfcProduct* CreateRailingSystem_4x3(IfcHierarchyHelper<Schema>& file, IBroker* pBroker, pgsTypes::TrafficBarrierOrientation tbOrientation, typename Schema::IfcAlignment* alignment)
 {
     GET_IFACE2(pBroker, IBarriers, pBarriers);
 
@@ -1273,7 +1438,7 @@ typename Schema::IfcProduct* CreateRailingSystem_4x3(IBroker* pBroker, IfcHierar
 }
 
 template <typename Schema>
-typename Schema::IfcBridge* CreateBridge_4x3(IBroker* pBroker, IfcHierarchyHelper<Schema>& file, typename Schema::IfcAlignment* alignment)
+typename Schema::IfcBridge* CreateBridge_4x3(IfcHierarchyHelper<Schema>& file,IBroker* pBroker,  typename Schema::IfcAlignment* alignment)
 {
    USES_CONVERSION;
 
@@ -1322,12 +1487,12 @@ typename Schema::IfcBridge* CreateBridge_4x3(IBroker* pBroker, IfcHierarchyHelpe
          SegmentIndexType nSegments = pBridge->GetSegmentCount(grpIdx, gdrIdx);
          for (SegmentIndexType segIdx = 0; segIdx < nSegments; segIdx++)
          {
-            auto segment = CreateGirderSegment_4x3<Schema>(pBroker, CSegmentKey(grpIdx, gdrIdx, segIdx), file, alignment);
+            auto segment = CreateGirderSegment_4x3<Schema>(file, pBroker, CSegmentKey(grpIdx, gdrIdx, segIdx), alignment);
             segments->push(segment);
 
             if (segIdx < nSegments - 1)
             {
-                auto closure_joint = CreateClosureJoint_4x3<Schema>(pBroker, CClosureKey(grpIdx, gdrIdx, segIdx), file, alignment);
+                auto closure_joint = CreateClosureJoint_4x3<Schema>(file, pBroker, CClosureKey(grpIdx, gdrIdx, segIdx), alignment);
                 segments->push(closure_joint);
             }
          }
@@ -1337,13 +1502,13 @@ typename Schema::IfcBridge* CreateBridge_4x3(IBroker* pBroker, IfcHierarchyHelpe
       }
    }
 
-   auto deck = CreateDeck_4x3<Schema>(pBroker, file, alignment);
+   auto deck = CreateDeck_4x3<Schema>(file, pBroker, alignment);
    related_elements->push(deck);
 
-   auto left_barrier = CreateRailingSystem_4x3<Schema>(pBroker, file, pgsTypes::tboLeft, alignment);
+   auto left_barrier = CreateRailingSystem_4x3<Schema>(file, pBroker, pgsTypes::tboLeft, alignment);
    related_elements->push(left_barrier);
 
-   auto right_barrier = CreateRailingSystem_4x3<Schema>(pBroker, file, pgsTypes::tboRight, alignment);
+   auto right_barrier = CreateRailingSystem_4x3<Schema>(file, pBroker, pgsTypes::tboRight, alignment);
    related_elements->push(right_barrier);
 
    auto spatial_structure = new Schema::IfcRelContainedInSpatialStructure(IfcParse::IfcGlobalId(), owner_history, boost::none, boost::none, related_elements, bridge);
@@ -1381,7 +1546,7 @@ void CIfcModelBuilder::BuildModel(IBroker* pBroker, const CString& strFilePath, 
 }
 
 template <typename Schema>
-void InitializeFile(IBroker* pBroker,const CString& strFilePath, IfcHierarchyHelper<Schema>& file)
+void InitializeFile(IfcHierarchyHelper<Schema>& file, IBroker* pBroker,const CString& strFilePath)
 {
    USES_CONVERSION;
 
@@ -1467,14 +1632,14 @@ void CIfcModelBuilder::BuildModel(IBroker* pBroker, const CString& strFilePath)
    USES_CONVERSION;
 
    IfcHierarchyHelper<Schema> file;
-   InitializeFile<Schema>(pBroker, strFilePath, file);
+   InitializeFile<Schema>(file, pBroker, strFilePath);
 
    boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcProduct>> related_elements(new IfcTemplatedEntityList<Schema::IfcProduct>());
 
-   auto alignment = CreateAlignment_4x3<Schema>(pBroker, file);
+   auto alignment = CreateAlignment_4x3<Schema>(file, pBroker);
    related_elements->push(alignment);
 
-   auto bridge = CreateBridge_4x3<Schema>(pBroker, file, alignment);
+   auto bridge = CreateBridge_4x3<Schema>(file, pBroker, alignment);
 
 
    auto owner_history = file.getSingle<Schema::IfcOwnerHistory>();
