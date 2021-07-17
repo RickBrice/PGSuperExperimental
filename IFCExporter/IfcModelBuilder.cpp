@@ -872,19 +872,8 @@ typename Schema::IfcProduct* CreateGirderSegment_4x3(IfcHierarchyHelper<Schema>&
     const pgsPointOfInterest& poiStart(vPoi.front());
     const pgsPointOfInterest& poiEnd(vPoi.back());
 
-    CComPtr<IPoint2d> pntStart, pntEnd;
-    pBridge->GetPoint(poiStart, pgsTypes::pcGlobal, &pntStart);
-    pBridge->GetPoint(poiEnd, pgsTypes::pcGlobal, &pntEnd);
-
-    Float64 Xs, Ys;
-    pntStart->Location(&Xs, &Ys);
-
-    Float64 Xe, Ye;
-    pntEnd->Location(&Xe, &Ye);
-
     GET_IFACE2(pBroker, IGirder, pGirder);
     Float64 Zs = pGirder->GetTopGirderChordElevation(poiStart);
-    Float64 Ze = pGirder->GetTopGirderChordElevation(poiEnd);
 
     CComPtr<IDirection> segment_direction;
     pBridge->GetSegmentBearing(segmentKey, &segment_direction);
@@ -896,8 +885,6 @@ typename Schema::IfcProduct* CreateGirderSegment_4x3(IfcHierarchyHelper<Schema>&
     Float64 Ls = pBridge->GetSegmentLength(segmentKey);
 
     boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcCartesianPoint>> girder_line_points(new IfcTemplatedEntityList<Schema::IfcCartesianPoint>());
-    //girder_line_points->push(new Schema::IfcCartesianPoint(std::vector<double>{Xs, Ys, Zs}));
-    //girder_line_points->push(new Schema::IfcCartesianPoint(std::vector<double>{Xe, Ye, Ze}));
     girder_line_points->push(new Schema::IfcCartesianPoint(std::vector<double>{0, 0, 0}));
     girder_line_points->push(new Schema::IfcCartesianPoint(std::vector<double>{Ls, 0, 0}));
     auto girder_line = new Schema::IfcPolyline(girder_line_points);
@@ -998,7 +985,7 @@ typename Schema::IfcProduct* CreateGirderSegment_4x3(IfcHierarchyHelper<Schema>&
 
 
     auto point_on_alignment = new Schema::IfcPointByDistanceExpression(new Schema::IfcNonNegativeLengthMeasure(startSegmentStation - startStation), -startSegmentOffset, Zs - startSegmentElevation, 0.0, directrix);
-    auto relative_placement = new Schema::IfcAxis2PlacementLinear(point_on_alignment, new Schema::IfcDirection(std::vector<double>{ 0, 0, 1 }), new Schema::IfcDirection(std::vector<double>{cos(direction), sin(direction), 0}));
+    auto relative_placement = new Schema::IfcAxis2PlacementLinear(point_on_alignment, new Schema::IfcDirection(std::vector<double>{ -segment_grade*cos(direction), -segment_grade * sin(direction), 1}), new Schema::IfcDirection(std::vector<double>{cos(direction), sin(direction), 0}));
     auto cartesian_position = new Schema::IfcAxis2Placement3D(new Schema::IfcCartesianPoint(std::vector<double>{0, 0, 0}), new Schema::IfcDirection(std::vector<double>{ 0, 0, 1 }), new Schema::IfcDirection(std::vector<double>{1, 0, 0}));
     auto segment_placement = new Schema::IfcLinearPlacement(nullptr, relative_placement, cartesian_position);
 
@@ -1064,12 +1051,6 @@ typename Schema::IfcProduct* CreateClosureJoint_4x3(IfcHierarchyHelper<Schema>& 
     Float64 Zs = pGirder->GetTopGirderChordElevation(poiStart);
     Float64 Ze = pGirder->GetTopGirderChordElevation(poiEnd);
 
-    Float64 Xs, Ys;
-    pntStart->Location(&Xs, &Ys);
-
-    Float64 Xe, Ye;
-    pntEnd->Location(&Xe, &Ye);
-
     
     Float64 distance;
     CComPtr<IDirection> closure_direction;
@@ -1083,8 +1064,8 @@ typename Schema::IfcProduct* CreateClosureJoint_4x3(IfcHierarchyHelper<Schema>& 
 
 
     boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcCartesianPoint>> girder_line_points(new IfcTemplatedEntityList<Schema::IfcCartesianPoint>());
-    girder_line_points->push(new Schema::IfcCartesianPoint(std::vector<double>{Xs, Ys, Zs}));
-    girder_line_points->push(new Schema::IfcCartesianPoint(std::vector<double>{Xe, Ye, Ze}));
+    girder_line_points->push(new Schema::IfcCartesianPoint(std::vector<double>{0, 0, 0}));
+    girder_line_points->push(new Schema::IfcCartesianPoint(std::vector<double>{Lc, 0, 0}));
     auto girder_line = new Schema::IfcPolyline(girder_line_points);
     file.addEntity(girder_line);
 
@@ -1185,11 +1166,11 @@ typename Schema::IfcProduct* CreateClosureJoint_4x3(IfcHierarchyHelper<Schema>& 
     auto bridge_placement = bridge->ObjectPlacement();
     ATLASSERT(bridge_placement);
 
-    Float64 startSegmentStation, startSegmentOffset;
-    pBridge->GetStationAndOffset(poiStart, &startSegmentStation, &startSegmentOffset);
+    Float64 startClosureStation, startClosureOffset;
+    pBridge->GetStationAndOffset(poiStart, &startClosureStation, &startClosureOffset);
 
     GET_IFACE2(pBroker, IRoadway, pAlignment);
-    Float64 startSegmentElevation = pAlignment->GetElevation(startSegmentStation, 0.0);
+    Float64 startClosureElevation = pAlignment->GetElevation(startClosureStation, 0.0);
 
     Float64 startStation, startElevation, startGrade;
     CComPtr<IPoint2d> startPoint;
@@ -1201,8 +1182,8 @@ typename Schema::IfcProduct* CreateClosureJoint_4x3(IfcHierarchyHelper<Schema>& 
     auto directrix = representation_item->as<Schema::IfcCurve>();
 
 
-    auto point_on_alignment = new Schema::IfcPointByDistanceExpression(new Schema::IfcNonNegativeLengthMeasure(startSegmentStation - startStation), -startSegmentOffset, Zs - startSegmentElevation, 0.0, directrix);
-    auto relative_placement = new Schema::IfcAxis2PlacementLinear(point_on_alignment, new Schema::IfcDirection(std::vector<double>{ 0, 0, 1 }), new Schema::IfcDirection(std::vector<double>{cos(direction), sin(direction), 0}));
+    auto point_on_alignment = new Schema::IfcPointByDistanceExpression(new Schema::IfcNonNegativeLengthMeasure(startClosureStation - startStation), -startClosureOffset, Zs - startClosureElevation, 0.0, directrix);
+    auto relative_placement = new Schema::IfcAxis2PlacementLinear(point_on_alignment, new Schema::IfcDirection(std::vector<double>{ -closure_grade * cos(direction), -closure_grade * sin(direction), 1}), new Schema::IfcDirection(std::vector<double>{cos(direction), sin(direction), 0}));
     auto cartesian_position = new Schema::IfcAxis2Placement3D(new Schema::IfcCartesianPoint(std::vector<double>{0, 0, 0}), new Schema::IfcDirection(std::vector<double>{ 0, 0, 1 }), new Schema::IfcDirection(std::vector<double>{1, 0, 0}));
     auto closure_placement = new Schema::IfcLinearPlacement(nullptr, relative_placement, cartesian_position);
 
