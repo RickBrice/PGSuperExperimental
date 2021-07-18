@@ -1062,76 +1062,16 @@ typename Schema::IfcProduct* CreateClosureJoint_4x3(IfcHierarchyHelper<Schema>& 
     Float64 Lc = pBridge->GetClosureJointLength(closureKey);
     Float64 closure_grade = (Ze - Zs)/Lc;
 
-
+    GET_IFACE2(pBroker, IShapes, pShapes);
     boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcCartesianPoint>> girder_line_points(new IfcTemplatedEntityList<Schema::IfcCartesianPoint>());
     girder_line_points->push(new Schema::IfcCartesianPoint(std::vector<double>{0, 0, 0}));
     girder_line_points->push(new Schema::IfcCartesianPoint(std::vector<double>{Lc, 0, 0}));
     auto girder_line = new Schema::IfcPolyline(girder_line_points);
     file.addEntity(girder_line);
 
-
-    // Assume prismatic - start and end shapes are the same - will need to update later
-    GET_IFACE2(pBroker, IShapes, pShapes);
-    CComPtr<IShape> shape;
-    IndexType gdrIdx, slabIdx;
-    pShapes->GetSegmentShape(intervalIdx, poiStart, true/*orient*/, pgsTypes::scGirder, &shape, &gdrIdx, &slabIdx);
-
-    CComQIPtr<ICompositeShape> composite(shape);
-    CComPtr<ICompositeShapeItem> shapeItem;
-    composite->get_Item(gdrIdx, &shapeItem);
-
-    CComPtr<IShape> gdrShape;
-    CComPtr<IShape> _gdrShape;
-    shapeItem->get_Shape(&_gdrShape);
-    CComQIPtr<ICompositeShape> compGdrShape(_gdrShape);
-    if (compGdrShape)
-    {
-        CComPtr<ICompositeShapeItem> compItem;
-        compGdrShape->get_Item(0, &compItem);
-        compItem->get_Shape(&gdrShape);
-    }
-    else
-    {
-        gdrShape = _gdrShape;
-    }
-
-    CComPtr<IPoint2dCollection> polyPoints;
-    gdrShape->get_PolyPoints(&polyPoints);
-
-    if (GetVertexOrdering(gdrShape) == CLOCKWISE)
-    {
-        polyPoints->Reverse();
-    }
-
-    boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcCartesianPoint>> points(new IfcTemplatedEntityList<Schema::IfcCartesianPoint>());
-    IndexType nPoints;
-    polyPoints->get_Count(&nPoints);
-    for (IndexType idx = 0; idx < nPoints; idx++)
-    {
-        CComPtr<IPoint2d> point;
-        polyPoints->get_Item(idx, &point);
-        Float64 x, y;
-        point->Location(&x, &y);
-
-        // NOTE: Use -x because PGSuper has X > 0 to the right looking down station at the start of the girder and IFC has X < 0
-        points->push(new Schema::IfcCartesianPoint(std::vector<double>{-x, y}));
-    }
-    
-    // make sure the polygon is closed
-    CComPtr<IPoint2d> first, last;
-    polyPoints->get_Item(0, &first);
-    polyPoints->get_Item(nPoints - 1, &last);
-    if (first->SameLocation(last) == S_FALSE)
-    {
-        points->push(*(points->begin()));
-    }
-
-    auto polyline = new Schema::IfcPolyline(points);
-    auto girder_section = new Schema::IfcArbitraryClosedProfileDef(Schema::IfcProfileTypeEnum::IfcProfileType_AREA, std::string("CrossSectionProfile"), polyline);
-
     boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcProfileDef>> cross_sections(new IfcTemplatedEntityList<Schema::IfcProfileDef>());
-    cross_sections->push(girder_section);
-    cross_sections->push(girder_section);
+    cross_sections->push(CreateSectionProfile<Schema>(pShapes, poiStart, intervalIdx));
+    cross_sections->push(CreateSectionProfile<Schema>(pShapes, poiEnd, intervalIdx));
 
 #if defined EXPORT_IFC_4x3_rc3
     IfcEntityList::ptr cross_section_positions(new IfcEntityList);
