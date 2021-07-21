@@ -1434,11 +1434,11 @@ typename Schema::IfcBridge* CreateBridge_4x3(IfcHierarchyHelper<Schema>& file,IB
 
    // Bug in IfcOpenShell is preventing the use of IfcFacilityPart to create a sub-spatial structure for the superstructure
    //auto bridge_part_type = new Schema::IfcBridgePartTypeEnum(Schema::IfcBridgePartTypeEnum::IfcBridgePartType_SUPERSTRUCTURE);
-   IfcWrite::IfcWriteArgument* attr = new IfcWrite::IfcWriteArgument();
-   attr->set(IfcWrite::IfcWriteArgument::EnumerationReference(Schema::IfcBridgePartTypeEnum::IfcBridgePartType_SUPERSTRUCTURE, Schema::IfcBridgePartTypeEnum::ToString(Schema::IfcBridgePartTypeEnum::IfcBridgePartType_SUPERSTRUCTURE)));
-   auto data_ = new IfcEntityInstanceData(&Schema::IfcBridgePartTypeEnum::Class());
-   data_->setArgument(0, attr);
-   auto bridge_part_type = new Schema::IfcBridgePartTypeEnum(data_);
+   //IfcWrite::IfcWriteArgument* attr = new IfcWrite::IfcWriteArgument();
+   //attr->set(IfcWrite::IfcWriteArgument::EnumerationReference(Schema::IfcBridgePartTypeEnum::IfcBridgePartType_SUPERSTRUCTURE, Schema::IfcBridgePartTypeEnum::ToString(Schema::IfcBridgePartTypeEnum::IfcBridgePartType_SUPERSTRUCTURE)));
+   //auto data_ = new IfcEntityInstanceData(&Schema::IfcBridgePartTypeEnum::Class());
+   //data_->setArgument(0, attr);
+   //auto bridge_part_type = new Schema::IfcBridgePartTypeEnum(data_);
 
    auto superstructure = new Schema::IfcFacilityPart(IfcParse::IfcGlobalId(), owner_history, std::string("Superstructure"), boost::none, boost::none, bridge_placement, nullptr, boost::none, 
       Schema::IfcElementCompositionEnum::IfcElementComposition_PARTIAL, 
