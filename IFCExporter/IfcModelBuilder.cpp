@@ -577,7 +577,9 @@ void CreateVerticalProfile_4x3(IfcHierarchyHelper<Schema>& file, IBroker* pBroke
    representation_items->push(gradient_curve);
 #endif
 
-   auto representation_subcontext = new Schema::IfcGeometricRepresentationSubContext(std::string("Axis"), std::string("Model"), file.getSingle<Schema::IfcGeometricRepresentationContext>(), boost::none, Schema::IfcGeometricProjectionEnum::IfcGeometricProjection_GRAPH_VIEW, boost::none);
+   auto geometric_representation_context = file.getRepresentationContext(std::string("3D"));
+   ATLASSERT(geometric_representation_context);
+   auto representation_subcontext = new Schema::IfcGeometricRepresentationSubContext(std::string("Axis"), std::string("Model"), geometric_representation_context, boost::none, Schema::IfcGeometricProjectionEnum::IfcGeometricProjection_GRAPH_VIEW, boost::none);
    auto shape_representation = new Schema::IfcShapeRepresentation(representation_subcontext, std::string("Axis"), std::string("Curve3D"), representation_items);
    boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcRepresentation>> representations(new IfcTemplatedEntityList<Schema::IfcRepresentation>());
    representations->push(shape_representation);
@@ -779,7 +781,8 @@ boost::shared_ptr<IfcTemplatedEntityList<typename Schema::IfcObjectDefinition>> 
          strand_representation_items->push(swept_disk_solid);
       }
 
-      auto geometric_representation_context = file.getSingle<Schema::IfcGeometricRepresentationContext>();
+      auto geometric_representation_context = file.getRepresentationContext(std::string("3D"));
+      ATLASSERT(geometric_representation_context);
       auto strand_shape_representation = new Schema::IfcShapeRepresentation(geometric_representation_context, std::string("Body"), std::string("AdvancedSweptSolid"), strand_representation_items);
       boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcRepresentation>> strand_shape_representation_list(new IfcTemplatedEntityList<Schema::IfcRepresentation>());
       strand_shape_representation_list->push(strand_shape_representation);
@@ -951,8 +954,8 @@ typename Schema::IfcProduct* CreateGirderSegment_4x3(IfcHierarchyHelper<Schema>&
     auto sectioned_solid = new Schema::IfcSectionedSolidHorizontal(girder_line, cross_sections, cross_section_positions, true/*fixed vertical axis*/);
     representation_items->push(sectioned_solid);
 
-
-    auto geometric_representation_context = file.getSingle<Schema::IfcGeometricRepresentationContext>();
+    auto geometric_representation_context = file.getRepresentationContext(std::string("3D"));
+    ATLASSERT(geometric_representation_context);
     boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcRepresentation>> shape_representation_list(new IfcTemplatedEntityList<Schema::IfcRepresentation>());
     auto shape_representation = new Schema::IfcShapeRepresentation(geometric_representation_context, std::string("Body"), std::string("AdvancedSweptSolid"), representation_items);
     shape_representation_list->push(shape_representation);
@@ -1090,7 +1093,8 @@ typename Schema::IfcProduct* CreateClosureJoint_4x3(IfcHierarchyHelper<Schema>& 
     boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcRepresentationItem>> representation_items(new IfcTemplatedEntityList<Schema::IfcRepresentationItem>());
     representation_items->push(sectioned_solid);
 
-    auto geometric_representation_context = file.getSingle<Schema::IfcGeometricRepresentationContext>();
+    auto geometric_representation_context = file.getRepresentationContext(std::string("3D"));
+    ATLASSERT(geometric_representation_context);
     boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcRepresentation>> shape_representation_list(new IfcTemplatedEntityList<Schema::IfcRepresentation>());
     auto shape_representation = new Schema::IfcShapeRepresentation(geometric_representation_context, std::string("Body"), std::string("AdvancedSweptSolid"), representation_items);
     shape_representation_list->push(shape_representation);
@@ -1217,7 +1221,8 @@ typename Schema::IfcProduct* CreateDeck_4x3(IfcHierarchyHelper<Schema>& file, IB
    boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcRepresentationItem>> representation_items(new IfcTemplatedEntityList<Schema::IfcRepresentationItem>());
    representation_items->push(sectioned_solid);
 
-   auto geometric_representation_context = file.getSingle<Schema::IfcGeometricRepresentationContext>();
+   auto geometric_representation_context = file.getRepresentationContext(std::string("3D"));
+   ATLASSERT(geometric_representation_context);
    boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcRepresentation>> shape_representation_list(new IfcTemplatedEntityList<Schema::IfcRepresentation>());
    auto shape_representation = new Schema::IfcShapeRepresentation(geometric_representation_context, std::string("Body"), std::string("AdvancedSweptSolid"), representation_items);
    shape_representation_list->push(shape_representation);
@@ -1345,8 +1350,9 @@ typename Schema::IfcProduct* CreateRailingSystem_4x3(IfcHierarchyHelper<Schema>&
        representation_items->push(sectioned_solid);
    }
 
-    auto geometric_representation_context = file.getSingle<Schema::IfcGeometricRepresentationContext>();
-    boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcRepresentation>> shape_representation_list(new IfcTemplatedEntityList<Schema::IfcRepresentation>());
+   auto geometric_representation_context = file.getRepresentationContext(std::string("3D"));
+   ATLASSERT(geometric_representation_context);
+   boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcRepresentation>> shape_representation_list(new IfcTemplatedEntityList<Schema::IfcRepresentation>());
     auto shape_representation = new Schema::IfcShapeRepresentation(geometric_representation_context, std::string("Body"), std::string("AdvancedSweptSolid"), representation_items);
     shape_representation_list->push(shape_representation);
    auto product_definition_shape = new Schema::IfcProductDefinitionShape(boost::none, boost::none, shape_representation_list);
@@ -1540,7 +1546,8 @@ void InitializeFile(IfcHierarchyHelper<Schema>& file, IBroker* pBroker,const CSt
    owner_history->OwningApplication()->ApplicationDeveloper()->setIdentification("Washington State Department of Transportation, Bridge and Structures Office");
    owner_history->OwningApplication()->ApplicationDeveloper()->setName("Richard Brice, PE");
 
-   auto geometric_representation_context = new Schema::IfcGeometricRepresentationContext(std::string("3D"), std::string("Model"), 3, boost::none, nullptr/*world coordinate system*/, nullptr/*true north*/);
+   auto world_coordinate_system = file.addPlacement3d();
+   auto geometric_representation_context = new Schema::IfcGeometricRepresentationContext(std::string("3D"), std::string("Model"), 3, boost::none, world_coordinate_system, nullptr/*true north*/);
    file.addEntity(geometric_representation_context); // ADD THE CONTEXT TO THE FILE!!!!
    auto contexts = project->RepresentationContexts(); // get the old context
    contexts->push(geometric_representation_context); // add the new context
