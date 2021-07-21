@@ -1440,12 +1440,12 @@ typename Schema::IfcBridge* CreateBridge_4x3(IfcHierarchyHelper<Schema>& file,IB
    //data_->setArgument(0, attr);
    //auto bridge_part_type = new Schema::IfcBridgePartTypeEnum(data_);
 
-   auto superstructure = new Schema::IfcFacilityPart(IfcParse::IfcGlobalId(), owner_history, std::string("Superstructure"), boost::none, boost::none, bridge_placement, nullptr, boost::none, 
-      Schema::IfcElementCompositionEnum::IfcElementComposition_PARTIAL, 
-      bridge_part_type, 
-      Schema::IfcFacilityUsageEnum::IfcFacilityUsage_LONGITUDINAL);
-   file.addEntity(superstructure);
-   related_elements->push(superstructure);
+   //auto superstructure = new Schema::IfcFacilityPart(IfcParse::IfcGlobalId(), owner_history, std::string("Superstructure"), boost::none, boost::none, bridge_placement, nullptr, boost::none, 
+   //   Schema::IfcElementCompositionEnum::IfcElementComposition_PARTIAL, 
+   //   bridge_part_type, 
+   //   Schema::IfcFacilityUsageEnum::IfcFacilityUsage_LONGITUDINAL);
+   //file.addEntity(superstructure);
+   //related_elements->push(superstructure);
 
    GroupIndexType nGroups = pBridge->GetGirderGroupCount();
    for (GroupIndexType grpIdx = 0; grpIdx < nGroups; grpIdx++)
