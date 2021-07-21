@@ -996,6 +996,44 @@ typename Schema::IfcProduct* CreateGirderSegment_4x3(IfcHierarchyHelper<Schema>&
     file.addEntity(segment);
 
     //
+    // materials
+    //
+
+    GET_IFACE2(pBroker, IMaterials, pMaterials);
+    IntervalIndexType releaseIntervalIdx = pIntervals->GetPrestressReleaseInterval(segmentKey);
+
+    // create the material
+    auto material = new Schema::IfcMaterial("Precast Segment Concrete", boost::none/*description*/, boost::none/*category*/);
+    file.addEntity(material);
+
+    // Pset_MaterialConcrete
+    boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcProperty>> pset_material_concrete_properties(new IfcTemplatedEntityList<Schema::IfcProperty>());
+    pset_material_concrete_properties->push(new Schema::IfcPropertySingleValue(std::string("CompressiveStrength"), boost::none, new Schema::IfcPressureMeasure(pMaterials->GetSegmentFc28(segmentKey)), nullptr));
+    pset_material_concrete_properties->push(new Schema::IfcPropertySingleValue(std::string("MaxAggregateSize"), boost::none, new Schema::IfcPositiveLengthMeasure(pMaterials->GetSegmentMaxAggrSize(segmentKey)), nullptr));
+    auto pset_material_concrete = new Schema::IfcMaterialProperties(std::string("Pset_MaterialConcrete"), boost::none/*description*/, pset_material_concrete_properties, material);
+    file.addEntity(pset_material_concrete);
+
+    //// define the individual properties of the material
+    //boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcProperty>> individual_properties(new IfcTemplatedEntityList<Schema::IfcProperty>());
+    //auto release_strength = new Schema::IfcPropertySingleValue(std::string("f'ci"), boost::none, new Schema::IfcPressureMeasure(pMaterials->GetSegmentFc(segmentKey,releaseIntervalIdx)), nullptr);
+    //auto concrete_strength = new Schema::IfcPropertySingleValue(std::string("f'c"), boost::none, new Schema::IfcPressureMeasure(pMaterials->GetSegmentFc28(segmentKey)), nullptr);
+    //individual_properties->push(release_strength);
+    //individual_properties->push(concrete_strength);
+
+    //// create the material properties for the material using the individual properties
+    //auto material_properties = new Schema::IfcMaterialProperties(std::string("Material Properties for Precast Segment Concrete"), boost::none/*description*/, pset_material_concrete, material);
+    //file.addEntity(material_properties);
+
+    // need a list of entities that are associated with this material
+    // right now we are creating a unique material for each segment but we still need the list
+    IfcEntityList::ptr segments(new IfcEntityList);
+    segments->push(segment);
+
+    // associate the material with the segment (ie segments collection)
+    auto rel_associates_materials = new Schema::IfcRelAssociatesMaterial(IfcParse::IfcGlobalId(), owner_history, std::string("Associates_Concrete_To_Precast_Segment"), boost::none, segments, material);
+    file.addEntity(rel_associates_materials);
+
+    //
     // begin modeling of prestressing strands
     //
     
@@ -1393,6 +1431,21 @@ typename Schema::IfcBridge* CreateBridge_4x3(IfcHierarchyHelper<Schema>& file,IB
    file.addEntity(bridge);
 
    boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcProduct>> related_elements(new IfcTemplatedEntityList<Schema::IfcProduct>());
+
+   // Bug in IfcOpenShell is preventing the use of IfcFacilityPart to create a sub-spatial structure for the superstructure
+   //auto bridge_part_type = new Schema::IfcBridgePartTypeEnum(Schema::IfcBridgePartTypeEnum::IfcBridgePartType_SUPERSTRUCTURE);
+   IfcWrite::IfcWriteArgument* attr = new IfcWrite::IfcWriteArgument();
+   attr->set(IfcWrite::IfcWriteArgument::EnumerationReference(Schema::IfcBridgePartTypeEnum::IfcBridgePartType_SUPERSTRUCTURE, Schema::IfcBridgePartTypeEnum::ToString(Schema::IfcBridgePartTypeEnum::IfcBridgePartType_SUPERSTRUCTURE)));
+   auto data_ = new IfcEntityInstanceData(&Schema::IfcBridgePartTypeEnum::Class());
+   data_->setArgument(0, attr);
+   auto bridge_part_type = new Schema::IfcBridgePartTypeEnum(data_);
+
+   auto superstructure = new Schema::IfcFacilityPart(IfcParse::IfcGlobalId(), owner_history, std::string("Superstructure"), boost::none, boost::none, bridge_placement, nullptr, boost::none, 
+      Schema::IfcElementCompositionEnum::IfcElementComposition_PARTIAL, 
+      bridge_part_type, 
+      Schema::IfcFacilityUsageEnum::IfcFacilityUsage_LONGITUDINAL);
+   file.addEntity(superstructure);
+   related_elements->push(superstructure);
 
    GroupIndexType nGroups = pBridge->GetGirderGroupCount();
    for (GroupIndexType grpIdx = 0; grpIdx < nGroups; grpIdx++)
