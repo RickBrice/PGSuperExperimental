@@ -12,22 +12,10 @@ public:
    CIfcAlignmentConverter(void);
    ~CIfcAlignmentConverter(void);
 
-   enum SchemaType
-   {
-      Schema_4x1,
-      Schema_4x2,
-      Schema_4x3_rc1,
-      //Schema_4x3_rc2,
-      Schema_4x3_rc3
-   };
-
-   // Converts PGSuper data to Ifc data
-   void ConvertToIfc(IBroker* pBroker, const CString& strFilePath,SchemaType schemaType);
-
    // Converts Ifc data to PGSuper data
    HRESULT ConvertToPGSuper(IBroker* pBroker, CString& strFilePath);
 
-   // Returns a list of notes that were generated during the LandXML to PGSuper conversion process
+   // Returns a list of notes that were generated during the IFC to PGSuper conversion process
    std::vector<std::_tstring> GetNotes();
 
    static Float64 GetPrecision() { return m_Precision; }
@@ -66,9 +54,6 @@ private:
    template <typename Schema>
    void InitUnits(IfcParse::IfcFile& file);
 
-   template <typename Schema>
-   IfcHierarchyHelper<Schema> CreateFile(IBroker* pBroker, const CString& strFilePath);
-
    Float64 GetStartDistAlong(Ifc4x3_rc2::IfcAlignmentHorizontal* pHorizontal);
    Float64 GetStartDistAlong(Ifc4x3_rc3::IfcAlignmentHorizontal* pHorizontal);
    Float64 GetStartDistAlong(Ifc4x3_rc4::IfcAlignmentHorizontal* pHorizontal);
@@ -77,13 +62,13 @@ private:
    void LoadAlignment(typename Schema::IfcAlignment* pAlignment);
 
    template <typename Schema>
-   void LoadAlignment_4x3(IfcParse::IfcFile& file,typename Schema::IfcAlignment* pAlignment);
+   Float64 LoadAlignment_4x3(IfcParse::IfcFile& file,typename Schema::IfcAlignment* pAlignment);
 
    template <typename Schema>
    void LoadProfile(typename Schema::IfcAlignment* pAlignment);
 
    template <typename Schema>
-   void LoadProfile_4x3(IfcParse::IfcFile& file, typename Schema::IfcAlignment* pAlignment);
+   void LoadProfile_4x3(IfcParse::IfcFile& file, typename Schema::IfcAlignment* pAlignment,Float64 stationAdjustment);
 
    //void LoadCrossSections(LX::CrossSects* pCrossSects, LX::String& strSurfaceName);
 

@@ -338,7 +338,7 @@ bool IsTransitionCurve(Ifc4x3_rc4::IfcAlignmentHorizontalSegment* horizontal_seg
        Ifc4x3_rc4::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CLOTHOID,
        Ifc4x3_rc4::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_COSINECURVE,
        Ifc4x3_rc4::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CUBIC,
-       Ifc4x3_rc4::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CUBICSPIRAL,
+       //Ifc4x3_rc4::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CUBICSPIRAL,
        Ifc4x3_rc4::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_HELMERTCURVE,
        Ifc4x3_rc4::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_SINECURVE,
        Ifc4x3_rc4::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_VIENNESEBEND
@@ -476,7 +476,7 @@ bool CIfcAlignmentConverter::IsValidAlignment_4x3(IfcParse::IfcFile& file,typena
         // transition curves must be adjacent to circular curves
         auto alignment_segment = (*(related_objects->begin()))->as<Schema::IfcAlignmentSegment>();
         auto horizontal_segment = GetHorizontalAlignmentSegment(alignment_segment);
-        return IsTransitionCurve(horizontal_segment);
+        return !IsTransitionCurve(horizontal_segment);
     }
     else if (nSegments == 2)
     {
@@ -658,6 +658,7 @@ HRESULT CIfcAlignmentConverter::ConvertToPGSuper(IBroker* pBroker, CString& strF
    }
    else
    {
+      AfxMessageBox(_T("Schema not supported"));
       ATLASSERT(false); // is there a new schema?
    }
 
@@ -728,10 +729,10 @@ bool CIfcAlignmentConverter::ConvertToPGSuper_4x3(IfcParse::IfcFile& file, Align
    if (alignment == nullptr)
       return false;
 
-   LoadAlignment_4x3<Schema>(file,alignment);
+   Float64 alignment_adjustment = LoadAlignment_4x3<Schema>(file,alignment);
    *pAlignmentData = m_AlignmentData;
 
-   LoadProfile_4x3<Schema>(file,alignment);
+   LoadProfile_4x3<Schema>(file,alignment, alignment_adjustment);
    *pProfileData = m_ProfileData;
 
 #pragma Reminder("WORKING HERE - Roadway Section Data")
@@ -1017,8 +1018,9 @@ Float64 CIfcAlignmentConverter::GetStartDistAlong(Ifc4x3_rc2::IfcAlignmentHorizo
 
 Float64 CIfcAlignmentConverter::GetStartDistAlong(Ifc4x3_rc3::IfcAlignmentHorizontal* pHorizontal)
 {
-    Float64 station = pHorizontal->hasStartDistAlong() ? pHorizontal->StartDistAlong() : 0.0;
-    return ::ConvertToSysUnits(station, *m_pLengthUnit);
+    //Float64 station = pHorizontal->hasStartDistAlong() ? pHorizontal->StartDistAlong() : 0.0;
+    //return ::ConvertToSysUnits(station, *m_pLengthUnit);
+    return 0.0; // not a property of IfcAlignmentHorizontal in rc3
 }
 
 Float64 CIfcAlignmentConverter::GetStartDistAlong(Ifc4x3_rc4::IfcAlignmentHorizontal* pHorizontal)
@@ -1027,7 +1029,7 @@ Float64 CIfcAlignmentConverter::GetStartDistAlong(Ifc4x3_rc4::IfcAlignmentHorizo
 }
 
 template <typename Schema>
-void CIfcAlignmentConverter::LoadAlignment_4x3(IfcParse::IfcFile& file, typename Schema::IfcAlignment* pAlignment)
+Float64 CIfcAlignmentConverter::LoadAlignment_4x3(IfcParse::IfcFile& file, typename Schema::IfcAlignment* pAlignment)
 {
     USES_CONVERSION;
     m_bAlignmentStarted = false; // the alignment datablock has not yet been started
@@ -1041,10 +1043,73 @@ void CIfcAlignmentConverter::LoadAlignment_4x3(IfcParse::IfcFile& file, typename
     m_AlignmentData.RefStation = 0.00;
     m_AlignmentData.CompoundCurves.clear();
 
+    Float64 station_adjustment = 0;
+
+    {
+       auto nested = pAlignment->IsNestedBy();
+       for (auto rel_nests : *nested)
+       {
+          ATLASSERT(rel_nests->RelatingObject() == pAlignment);
+          auto related_objects = rel_nests->RelatedObjects();
+          for (auto related_object : *related_objects)
+          {
+             auto referent = related_object->as<Schema::IfcReferent>();
+             if (referent && referent->hasPredefinedType() && referent->PredefinedType() == Schema::IfcReferentTypeEnum::IfcReferentType_STATION)
+             {
+                auto rel_defines_by_properties = referent->IsDefinedBy();
+                for (auto rel_defines_property : *rel_defines_by_properties)
+                {
+                   auto property_set = rel_defines_property->RelatingPropertyDefinition()->as<Schema::IfcPropertySet>();
+                   if (property_set->Name() == "Pset_Stationing")
+                   {
+                      auto properties = property_set->HasProperties();
+                      for (auto prop : *properties)
+                      {
+                         if (prop->Name() == "Station")
+                         {
+                            auto single_value_property = prop->as<Schema::IfcPropertySingleValue>();
+                            if (single_value_property->hasNominalValue())
+                            {
+                               Float64 value = *(single_value_property->NominalValue()->as<Schema::IfcLengthMeasure>());
+                               m_AlignmentData.RefStation = value;
+
+                               if (referent->hasObjectPlacement())
+                               {
+                                  auto object_placement = referent->ObjectPlacement();
+                                  auto linear_placement = object_placement->as<Schema::IfcLinearPlacement>();
+                                  if (linear_placement)
+                                  {
+                                     // get the distance along the curve for the placement of the referent
+                                     // then update all of the alignment parts with (RefStation - distAlong)
+                                     auto axis2placementlinear = linear_placement->RelativePlacement();
+                                     auto location = axis2placementlinear->Location();
+                                     auto point_by_distance_expression = location->as<Schema::IfcPointByDistanceExpression>();
+                                     if (point_by_distance_expression)
+                                     {
+                                        Float64 distance_along = *(point_by_distance_expression->DistanceAlong()->as<Schema::IfcNonNegativeLengthMeasure>());
+                                        station_adjustment = m_AlignmentData.RefStation - distance_along;
+                                     }
+                                  }
+                               }
+                            }
+                         }
+                         else if (prop->Name() == "IncomingStation")
+                         {
+                            // this is used for station equations
+                         }
+                      }
+                   }
+                }
+             }
+          }
+       }
+    }
+
     Schema::IfcAlignmentHorizontal* horizontal_alignment = GetAlignmentHorizontal(pAlignment);
     ATLASSERT(horizontal_alignment); // should have found one
 
-    Float64 current_station = GetStartDistAlong(horizontal_alignment);
+    Float64 current_station = GetStartDistAlong(horizontal_alignment); // not part of rc4, so returns zero
+    current_station += station_adjustment;
 
     // alignment is made up of Line, Spiral, and/or Curve elements
     auto nested = horizontal_alignment->IsNestedBy();
@@ -1174,6 +1239,8 @@ void CIfcAlignmentConverter::LoadAlignment_4x3(IfcParse::IfcFile& file, typename
         }
         current_station = end_station;
     }
+
+    return station_adjustment;
 }
 
 template <typename Schema>
@@ -1257,7 +1324,7 @@ void CIfcAlignmentConverter::LoadProfile(typename Schema::IfcAlignment* pAlignme
 }
 
 template <typename Schema>
-void CIfcAlignmentConverter::LoadProfile_4x3(IfcParse::IfcFile& file, typename Schema::IfcAlignment* pAlignment)
+void CIfcAlignmentConverter::LoadProfile_4x3(IfcParse::IfcFile& file, typename Schema::IfcAlignment* pAlignment, Float64 stationAdjustment)
 {
    m_ProfileState = PROFILE_NOT_STARTED;
    m_ProfileData.Station = 0;
@@ -1270,10 +1337,12 @@ void CIfcAlignmentConverter::LoadProfile_4x3(IfcParse::IfcFile& file, typename S
    Schema::IfcAlignmentVertical* vertical_alignment = GetAlignmentVertical(pAlignment);
 
    Float64 start_station = GetStartDistAlong(horizontal_alignment);
+   start_station += stationAdjustment;
 
    if(vertical_alignment)
    {
        auto nested = vertical_alignment->IsNestedBy();
+       ATLASSERT((*nested).size() == 1);
        auto related_objects = (*nested->begin())->RelatedObjects();
 
       if (related_objects->size() == 0)
@@ -2127,7 +2196,7 @@ void CIfcAlignmentConverter::ParabolicSegment_4x3(Float64 startStation, typename
    if (0 < (exit_gradient - start_gradient)/length) // is convex
       R *= -1; // convex
 
-   ATLASSERT(IsEqual(exit_gradient, start_gradient - length / R));
+   ATLASSERT(IsEqual(exit_gradient, start_gradient + length / R));
 
    if (m_ProfileState == PROFILE_NOT_STARTED)
    {
@@ -2204,9 +2273,9 @@ void CIfcAlignmentConverter::CheckSpiralType_4x3(Ifc4x3_rc3::IfcAlignmentHorizon
    case Ifc4x3_rc3::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_BLOSSCURVE:
    case Ifc4x3_rc3::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_COSINECURVE:
    //case Ifc4x3_rc3::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CUBICSPIRAL:
-   case Ifc4x3_rc3::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_BIQUADRATICPARABOLA:
+   //case Ifc4x3_rc3::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_BIQUADRATICPARABOLA:
    case Ifc4x3_rc3::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CUBIC:
-   //case Ifc4x3_rc3::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_HELMERTCURVE:
+   case Ifc4x3_rc3::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_HELMERTCURVE:
    case Ifc4x3_rc3::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_SINECURVE:
    case Ifc4x3_rc3::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_VIENNESEBEND:
       m_Notes.push_back(std::_tstring(_T("Spiral type not supported. Assuming clothoid.")));
@@ -2229,7 +2298,7 @@ void CIfcAlignmentConverter::CheckSpiralType_4x3(Ifc4x3_rc4::IfcAlignmentHorizon
     {
     case Ifc4x3_rc4::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_BLOSSCURVE:
     case Ifc4x3_rc4::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_COSINECURVE:
-    case Ifc4x3_rc4::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CUBICSPIRAL:
+    //case Ifc4x3_rc4::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CUBICSPIRAL:
     //case Ifc4x3_rc4::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_BIQUADRATICPARABOLA:
     case Ifc4x3_rc4::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_CUBIC:
     case Ifc4x3_rc4::IfcAlignmentHorizontalSegmentTypeEnum::IfcAlignmentHorizontalSegmentType_HELMERTCURVE:

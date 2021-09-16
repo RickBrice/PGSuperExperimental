@@ -45,5 +45,5 @@ extern CComModule _Module;
 #include <ifcparse/Ifc4x3_rc3.h>
 #include <ifcparse/Ifc4x3_rc4.h>
 
-#define EXPORT_IFC_4x3_rc3 // when defined, export uses RC3, otherwise it uses RC4
-#define APPROXIMATE_ALIGNMENT_GEOMETRY // when defined the geometric representation of the alignment is approximated with an IfcPolyline, otherwise it is modeled with IfcGradientCurve
+//#define EXPORT_IFC_4x3_rc3 // when defined, export uses RC3, otherwise it uses RC4
+//#define APPROXIMATE_ALIGNMENT_GEOMETRY // when defined the geometric representation of the alignment is approximated with an IfcPolyline, otherwise it is modeled with IfcGradientCurve

@@ -7,6 +7,7 @@
 #include <IFace\DocumentType.h>
 #include <IFace\Bridge.h>
 #include <IFace\Intervals.h>
+#include <IFace\PrestressForce.h>
 
 #include <PgsExt\GirderLabel.h>
 #include <PgsExt\PrecastSegmentData.h>
@@ -275,7 +276,7 @@ void CreateHorizontalAlignment_4x3(IfcHierarchyHelper<Schema>& file,IBroker* pBr
          Float64 A = (bIsCCW ? 1.0 : -1.0)*sqrt(Lspiral[spExit] / R);
          auto parent_curve = new Schema::IfcClothoid(ifc_start, A);
          auto placement = new Schema::IfcAxis2Placement2D(ifc_prev_point, new Schema::IfcDirection(std::vector<double>{cos(fwd_tangent_direction_curve), sin(fwd_tangent_direction_curve)}));
-         auto curve_segment = new Schema::IfcCurveSegment(Ifc4x3_rc3::IfcTransitionCode::IfcTransitionCode_CONTSAMEGRADIENT, placement, new Schema::IfcNonNegativeLengthMeasure(0.0), new Schema::IfcNonNegativeLengthMeasure(Lspiral[spExit]), parent_curve);
+         auto curve_segment = new Schema::IfcCurveSegment(Schema::IfcTransitionCode::IfcTransitionCode_CONTSAMEGRADIENT, placement, new Schema::IfcNonNegativeLengthMeasure(0.0), new Schema::IfcNonNegativeLengthMeasure(Lspiral[spExit]), parent_curve);
          curve_segments->push(curve_segment);
 #endif
       }
@@ -318,11 +319,7 @@ void CreateHorizontalAlignment_4x3(IfcHierarchyHelper<Schema>& file,IBroker* pBr
    }
 
    // create a horizontal alignment from all the alignment segments
-#if defined EXPORT_IFC_4x3_rc3
-   auto horizontal_alignment = new Schema::IfcAlignmentHorizontal(IfcParse::IfcGlobalId(), file.getSingle<Schema::IfcOwnerHistory>(), std::string("Horz Alignment"), boost::none, boost::none, file.getSingle<Schema::IfcLocalPlacement>(), nullptr/*representation*/, startStation);
-#else
    auto horizontal_alignment = new Schema::IfcAlignmentHorizontal(IfcParse::IfcGlobalId(), file.getSingle<Schema::IfcOwnerHistory>(), std::string("Horz Alignment"), boost::none, boost::none, file.getSingle<Schema::IfcLocalPlacement>(), nullptr/*representation*/);
-#endif
    file.addEntity(horizontal_alignment);
 
    auto nests = new Schema::IfcRelNests(IfcParse::IfcGlobalId(), file.getSingle<Schema::IfcOwnerHistory>(), std::string("Horz Segments"), std::string("Nests horizontal alignment segments with horizontal alignment"), horizontal_alignment, alignment_segments);
@@ -423,7 +420,7 @@ void CreateVerticalProfile_4x3(IfcHierarchyHelper<Schema>& file, IBroker* pBroke
          curve->get_K1(&k1);
          curve->get_K2(&k2);
 
-         Schema::IfcAlignmentVerticalSegment* parabolic_segment1 = new Schema::IfcAlignmentVerticalSegment(boost::none, boost::none, start_dist_along, l1, start_height, start_gradient, pviGrade, k1, Schema::IfcAlignmentVerticalSegmentTypeEnum::IfcAlignmentVerticalSegmentType_PARABOLICARC);
+         Schema::IfcAlignmentVerticalSegment* parabolic_segment1 = new Schema::IfcAlignmentVerticalSegment(boost::none, boost::none, start_dist_along, l1, start_height, start_gradient, pviGrade, IsZero(k1) ? Float64_Max : 1/k1, Schema::IfcAlignmentVerticalSegmentTypeEnum::IfcAlignmentVerticalSegmentType_PARABOLICARC);
          auto segment1 = new Schema::IfcAlignmentSegment(IfcParse::IfcGlobalId(), file.getSingle<Schema::IfcOwnerHistory>(), boost::none, boost::none, boost::none, nullptr, nullptr, parabolic_segment1);
          file.addEntity(segment1);
          profile_segments->push(segment1);
@@ -440,7 +437,7 @@ void CreateVerticalProfile_4x3(IfcHierarchyHelper<Schema>& file, IBroker* pBroke
          curve_segments->push(curve_segment1);
 #endif
 
-         Schema::IfcAlignmentVerticalSegment* parabolic_segment2 = new Schema::IfcAlignmentVerticalSegment(boost::none, boost::none, start_dist_along+l1, l2, pviElevation, pviGrade, end_gradient, k2, Schema::IfcAlignmentVerticalSegmentTypeEnum::IfcAlignmentVerticalSegmentType_PARABOLICARC);
+         Schema::IfcAlignmentVerticalSegment* parabolic_segment2 = new Schema::IfcAlignmentVerticalSegment(boost::none, boost::none, start_dist_along+l1, l2, pviElevation, pviGrade, end_gradient, IsZero(k2) ? Float64_Max : 1/k2, Schema::IfcAlignmentVerticalSegmentTypeEnum::IfcAlignmentVerticalSegmentType_PARABOLICARC);
          auto segment2 = new Schema::IfcAlignmentSegment(IfcParse::IfcGlobalId(), file.getSingle<Schema::IfcOwnerHistory>(), boost::none, boost::none, boost::none, nullptr, nullptr, parabolic_segment2);
          file.addEntity(segment2);
          profile_segments->push(segment2);
@@ -486,7 +483,7 @@ void CreateVerticalProfile_4x3(IfcHierarchyHelper<Schema>& file, IBroker* pBroke
          {
             Float64 k;
             curve->get_K1(&k);
-            Schema::IfcAlignmentVerticalSegment* parabolic_segment = new Schema::IfcAlignmentVerticalSegment(boost::none, boost::none, start_dist_along, horizontal_length, start_height, start_gradient, end_gradient, k, Schema::IfcAlignmentVerticalSegmentTypeEnum::IfcAlignmentVerticalSegmentType_PARABOLICARC);
+            Schema::IfcAlignmentVerticalSegment* parabolic_segment = new Schema::IfcAlignmentVerticalSegment(boost::none, boost::none, start_dist_along, horizontal_length, start_height, start_gradient, end_gradient, IsZero(k) ? Float64_Max : 1/k, Schema::IfcAlignmentVerticalSegmentTypeEnum::IfcAlignmentVerticalSegmentType_PARABOLICARC);
             auto segment = new Schema::IfcAlignmentSegment(IfcParse::IfcGlobalId(), file.getSingle<Schema::IfcOwnerHistory>(), boost::none, boost::none, boost::none, nullptr, nullptr, parabolic_segment);
             file.addEntity(segment);
             profile_segments->push(segment);
@@ -622,6 +619,7 @@ typename Schema::IfcAlignment* CreateAlignment_4x3(IfcHierarchyHelper<Schema>& f
 
    GET_IFACE2(pBroker, IRoadwayData, pRoadwayData);
    std::string strAlignmentName(T2A(pRoadwayData->GetAlignmentData2().Name.c_str()));
+   if (strAlignmentName.length() == 0) strAlignmentName = "Unnamed";
    auto alignment = new Schema::IfcAlignment(IfcParse::IfcGlobalId(), file.getSingle<Schema::IfcOwnerHistory>(), strAlignmentName, boost::none, boost::none, local_placement, alignment_product_definition_shape, boost::none);
    file.addEntity(alignment);
 
@@ -631,6 +629,31 @@ typename Schema::IfcAlignment* CreateAlignment_4x3(IfcHierarchyHelper<Schema>& f
 
    auto nests = new Schema::IfcRelNests(IfcParse::IfcGlobalId(), file.getSingle<Schema::IfcOwnerHistory>(), std::string("Nest Horz and Vert Alignment"), boost::none, alignment, related_objects);
    file.addEntity(nests);
+
+   // add stationing information
+   GET_IFACE2(pBroker, IRoadway, pAlignment);
+   Float64 startStation, startElevation, startGrade;
+   CComPtr<IPoint2d> startPoint;
+   pAlignment->GetStartPoint(2, &startStation, &startElevation, &startGrade, &startPoint);
+
+   auto point_on_alignment = new Schema::IfcPointByDistanceExpression(new Schema::IfcNonNegativeLengthMeasure(0.0), 0.0, 0.0, 0.0, horizontal_geometry_base_curve);
+   auto relative_placement = new Schema::IfcAxis2PlacementLinear(point_on_alignment, new Schema::IfcDirection(std::vector<double>{ 0, 0, 1}), new Schema::IfcDirection(std::vector<double>{1,0,0}));
+   auto cartesian_position = new Schema::IfcAxis2Placement3D(new Schema::IfcCartesianPoint(std::vector<double>{0, 0, 0}), new Schema::IfcDirection(std::vector<double>{ 0, 0, 1 }), new Schema::IfcDirection(std::vector<double>{1, 0, 0}));
+   auto referent_placement = new Schema::IfcLinearPlacement(nullptr, relative_placement, cartesian_position);
+
+
+   boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcProperty>> pset_station_properties(new IfcTemplatedEntityList<Schema::IfcProperty>());
+   pset_station_properties->push(new Schema::IfcPropertySingleValue(std::string("Station"), boost::none, new Schema::IfcLengthMeasure(startStation), nullptr));
+   auto property_set = new Schema::IfcPropertySet(IfcParse::IfcGlobalId(), file.getSingle<Schema::IfcOwnerHistory>(), std::string("Pset_Stationing"), boost::none, pset_station_properties);
+   file.addEntity(property_set);
+   auto stationing_referent = new Schema::IfcReferent(IfcParse::IfcGlobalId(), file.getSingle<Schema::IfcOwnerHistory>(), std::string("Start of alignment station"), boost::none, boost::none, referent_placement, nullptr, Schema::IfcReferentTypeEnum::IfcReferentType_STATION, boost::none);
+   file.addEntity(stationing_referent);
+   boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcObjectDefinition>> related_stationing_objects(new IfcTemplatedEntityList<Schema::IfcObjectDefinition>());
+   related_stationing_objects->push(stationing_referent);
+   auto nests_stationing = new Schema::IfcRelNests(IfcParse::IfcGlobalId(), file.getSingle<Schema::IfcOwnerHistory>(), std::string("Nests Referents with station information with alignment"), boost::none, alignment, related_stationing_objects);
+   file.addEntity(nests_stationing);
+   auto rel_defines_by_properties = new Schema::IfcRelDefinesByProperties(IfcParse::IfcGlobalId(), file.getSingle<Schema::IfcOwnerHistory>(), std::string("Relates station properties to referent"), boost::none, related_stationing_objects, property_set);
+   file.addEntity(rel_defines_by_properties);
 
    return alignment;
 }
@@ -895,12 +918,7 @@ typename Schema::IfcProduct* CreateGirderSegment_4x3(IfcHierarchyHelper<Schema>&
 
 
     boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcProfileDef>> cross_sections(new IfcTemplatedEntityList<Schema::IfcProfileDef>());
-    
-#if defined EXPORT_IFC_4x3_rc3
-     IfcEntityList::ptr cross_section_positions(new IfcEntityList);
-#else
     boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcAxis2PlacementLinear>> cross_section_positions(new IfcTemplatedEntityList<Schema::IfcAxis2PlacementLinear>());
-#endif
 
     //CComPtr<IAngle> objStartSkew, objEndSkew;
     //pBridge->GetSegmentSkewAngle(segmentKey, pgsTypes::metStart, &objStartSkew);
@@ -942,11 +960,7 @@ typename Schema::IfcProduct* CreateGirderSegment_4x3(IfcHierarchyHelper<Schema>&
 
     for (const pgsPointOfInterest& poi : vPoi)
     {
-#if defined EXPORT_IFC_4x3_rc3
-       cross_section_positions->push(new Ifc4x3_rc3::IfcNonNegativeLengthMeasure(poi.GetDistFromStart()));
-#else
        cross_section_positions->push(new Schema::IfcAxis2PlacementLinear(new Schema::IfcCartesianPoint(std::vector<double>{poi.GetDistFromStart(), 0}), nullptr, nullptr));
-#endif
        auto girder_section = CreateSectionProfile<Schema>(pShapes, poi, intervalIdx);
        cross_sections->push(girder_section);
     }
@@ -1000,18 +1014,31 @@ typename Schema::IfcProduct* CreateGirderSegment_4x3(IfcHierarchyHelper<Schema>&
     //
 
     GET_IFACE2(pBroker, IMaterials, pMaterials);
+    GET_IFACE2(pBroker, IStrandGeometry, pStrandGeom);
     IntervalIndexType releaseIntervalIdx = pIntervals->GetPrestressReleaseInterval(segmentKey);
+    IntervalIndexType liftingIntervalIdx = pIntervals->GetLiftSegmentInterval(segmentKey);
+    IntervalIndexType haulingIntervalIdx = pIntervals->GetHaulSegmentInterval(segmentKey);
 
     // create the material
     auto material = new Schema::IfcMaterial("Precast Segment Concrete", boost::none/*description*/, boost::none/*category*/);
     file.addEntity(material);
 
     // Pset_MaterialConcrete
-    boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcProperty>> pset_material_concrete_properties(new IfcTemplatedEntityList<Schema::IfcProperty>());
-    pset_material_concrete_properties->push(new Schema::IfcPropertySingleValue(std::string("CompressiveStrength"), boost::none, new Schema::IfcPressureMeasure(pMaterials->GetSegmentFc28(segmentKey)), nullptr));
-    pset_material_concrete_properties->push(new Schema::IfcPropertySingleValue(std::string("MaxAggregateSize"), boost::none, new Schema::IfcPositiveLengthMeasure(pMaterials->GetSegmentMaxAggrSize(segmentKey)), nullptr));
-    auto pset_material_concrete = new Schema::IfcMaterialProperties(std::string("Pset_MaterialConcrete"), boost::none/*description*/, pset_material_concrete_properties, material);
+    boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcProperty>> material_concrete_properties(new IfcTemplatedEntityList<Schema::IfcProperty>());
+    material_concrete_properties->push(new Schema::IfcPropertySingleValue(std::string("CompressiveStrength"), boost::none, new Schema::IfcPressureMeasure(pMaterials->GetSegmentFc28(segmentKey)), nullptr));
+    material_concrete_properties->push(new Schema::IfcPropertySingleValue(std::string("MaxAggregateSize"), boost::none, new Schema::IfcPositiveLengthMeasure(pMaterials->GetSegmentMaxAggrSize(segmentKey)), nullptr));
+    auto pset_material_concrete = new Schema::IfcMaterialProperties(std::string("Pset_MaterialConcrete"), boost::none/*description*/, material_concrete_properties, material);
     file.addEntity(pset_material_concrete);
+
+    // Pset_PrecastConcreteElementGeneral
+    boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcProperty>> precast_concrete_properties(new IfcTemplatedEntityList<Schema::IfcProperty>());
+    precast_concrete_properties->push(new Schema::IfcPropertySingleValue(std::string("FormStrippingStrength"),boost::none, new Schema::IfcPressureMeasure(pMaterials->GetSegmentFc(segmentKey,releaseIntervalIdx)),nullptr));
+    precast_concrete_properties->push(new Schema::IfcPropertySingleValue(std::string("LiftingStrength"), boost::none, new Schema::IfcPressureMeasure(pMaterials->GetSegmentFc(segmentKey, liftingIntervalIdx)), nullptr));
+    precast_concrete_properties->push(new Schema::IfcPropertySingleValue(std::string("ReleaseStrength"), boost::none, new Schema::IfcPressureMeasure(pMaterials->GetSegmentFc(segmentKey, releaseIntervalIdx)), nullptr));
+    precast_concrete_properties->push(new Schema::IfcPropertySingleValue(std::string("TransportationStrength"), boost::none, new Schema::IfcPressureMeasure(pMaterials->GetSegmentFc(segmentKey, haulingIntervalIdx)), nullptr));
+    precast_concrete_properties->push(new Schema::IfcPropertySingleValue(std::string("InitialTension"), boost::none, new Schema::IfcPressureMeasure(pStrandGeom->GetJackingStress(segmentKey,pgsTypes::Permanent)), nullptr));
+    auto pset_material_precast_concrete = new Schema::IfcMaterialProperties(std::string("Pset_PrecastConcreteElementGeneral"), boost::none, precast_concrete_properties, material);
+    file.addEntity(pset_material_precast_concrete);
 
     //// define the individual properties of the material
     //boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcProperty>> individual_properties(new IfcTemplatedEntityList<Schema::IfcProperty>());
@@ -1114,17 +1141,11 @@ typename Schema::IfcProduct* CreateClosureJoint_4x3(IfcHierarchyHelper<Schema>& 
     cross_sections->push(CreateSectionProfile<Schema>(pShapes, poiStart, intervalIdx));
     cross_sections->push(CreateSectionProfile<Schema>(pShapes, poiEnd, intervalIdx));
 
-#if defined EXPORT_IFC_4x3_rc3
-    IfcEntityList::ptr cross_section_positions(new IfcEntityList);
-    cross_section_positions->push(new Ifc4x3_rc3::IfcNonNegativeLengthMeasure(0.0));
-    cross_section_positions->push(new Ifc4x3_rc3::IfcNonNegativeLengthMeasure(Lc));
-#else
     boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcAxis2PlacementLinear>> cross_section_positions(new IfcTemplatedEntityList<Schema::IfcAxis2PlacementLinear>());
     auto start_section = new Schema::IfcAxis2PlacementLinear(new Schema::IfcCartesianPoint(std::vector<double>{0, 0}), nullptr, nullptr);
     auto end_section = new Schema::IfcAxis2PlacementLinear(new Schema::IfcCartesianPoint(std::vector<double>{Lc, 0}), nullptr, nullptr);
     cross_section_positions->push(start_section);
     cross_section_positions->push(end_section);
-#endif
 
     auto sectioned_solid = new Schema::IfcSectionedSolidHorizontal(girder_line, cross_sections, cross_section_positions, true/*fixed vertical axis*/);
 
@@ -1242,17 +1263,11 @@ typename Schema::IfcProduct* CreateDeck_4x3(IfcHierarchyHelper<Schema>& file, IB
    CComPtr<IPoint2d> startPoint;
    pAlignment->GetStartPoint(2, &startStation, &startElevation, &startGrade, &startPoint);
 
-#if defined EXPORT_IFC_4x3_rc3
-   IfcEntityList::ptr cross_section_positions(new IfcEntityList);
-   cross_section_positions->push(new Ifc4x3_rc3::IfcNonNegativeLengthMeasure(startBrgStation - startStation));
-   cross_section_positions->push(new Ifc4x3_rc3::IfcNonNegativeLengthMeasure(endBrgStation - startStation));
-#else
    boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcAxis2PlacementLinear>> cross_section_positions(new IfcTemplatedEntityList<Schema::IfcAxis2PlacementLinear>());
    auto start_section = new Schema::IfcAxis2PlacementLinear(new Schema::IfcCartesianPoint(std::vector<double>{startBrgStation - startStation, 0}), nullptr, nullptr);
    auto end_section = new Schema::IfcAxis2PlacementLinear(new Schema::IfcCartesianPoint(std::vector<double>{endBrgStation - startStation, 0}), nullptr, nullptr);
    cross_section_positions->push(start_section);
    cross_section_positions->push(end_section);
-#endif
 
    auto sectioned_solid = new Schema::IfcSectionedSolidHorizontal(directrix, cross_sections, cross_section_positions, true/*Y is always up*/);
 
@@ -1371,17 +1386,11 @@ typename Schema::IfcProduct* CreateRailingSystem_4x3(IfcHierarchyHelper<Schema>&
        CComPtr<IPoint2d> startPoint;
        pAlignment->GetStartPoint(2, &startStation, &startElevation, &startGrade, &startPoint);
 
-#if defined EXPORT_IFC_4x3_rc3
-       IfcEntityList::ptr cross_section_positions(new IfcEntityList);
-       cross_section_positions->push(new Ifc4x3_rc3::IfcNonNegativeLengthMeasure(startBrgStation - startStation));
-       cross_section_positions->push(new Ifc4x3_rc3::IfcNonNegativeLengthMeasure(endBrgStation - startStation));
-#else
        boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcAxis2PlacementLinear>> cross_section_positions(new IfcTemplatedEntityList<Schema::IfcAxis2PlacementLinear>());
        auto start_section = new Schema::IfcAxis2PlacementLinear(new Schema::IfcCartesianPoint(std::vector<double>{startBrgStation - startStation, 0}), nullptr, nullptr);
        auto end_section = new Schema::IfcAxis2PlacementLinear(new Schema::IfcCartesianPoint(std::vector<double>{endBrgStation - startStation, 0}), nullptr, nullptr);
        cross_section_positions->push(start_section);
        cross_section_positions->push(end_section);
-#endif
 
        auto sectioned_solid = new Schema::IfcSectionedSolidHorizontal(directrix, cross_sections, cross_section_positions, true/*Y is always up*/);
 
@@ -1433,19 +1442,19 @@ typename Schema::IfcBridge* CreateBridge_4x3(IfcHierarchyHelper<Schema>& file,IB
    boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcProduct>> related_elements(new IfcTemplatedEntityList<Schema::IfcProduct>());
 
    // Bug in IfcOpenShell is preventing the use of IfcFacilityPart to create a sub-spatial structure for the superstructure
-   //auto bridge_part_type = new Schema::IfcBridgePartTypeEnum(Schema::IfcBridgePartTypeEnum::IfcBridgePartType_SUPERSTRUCTURE);
+   auto bridge_part_type = new Schema::IfcBridgePartTypeEnum(Schema::IfcBridgePartTypeEnum::IfcBridgePartType_SUPERSTRUCTURE);
    //IfcWrite::IfcWriteArgument* attr = new IfcWrite::IfcWriteArgument();
    //attr->set(IfcWrite::IfcWriteArgument::EnumerationReference(Schema::IfcBridgePartTypeEnum::IfcBridgePartType_SUPERSTRUCTURE, Schema::IfcBridgePartTypeEnum::ToString(Schema::IfcBridgePartTypeEnum::IfcBridgePartType_SUPERSTRUCTURE)));
    //auto data_ = new IfcEntityInstanceData(&Schema::IfcBridgePartTypeEnum::Class());
    //data_->setArgument(0, attr);
    //auto bridge_part_type = new Schema::IfcBridgePartTypeEnum(data_);
 
-   //auto superstructure = new Schema::IfcFacilityPart(IfcParse::IfcGlobalId(), owner_history, std::string("Superstructure"), boost::none, boost::none, bridge_placement, nullptr, boost::none, 
-   //   Schema::IfcElementCompositionEnum::IfcElementComposition_PARTIAL, 
-   //   bridge_part_type, 
-   //   Schema::IfcFacilityUsageEnum::IfcFacilityUsage_LONGITUDINAL);
-   //file.addEntity(superstructure);
-   //related_elements->push(superstructure);
+   auto superstructure = new Schema::IfcFacilityPart(IfcParse::IfcGlobalId(), owner_history, std::string("Superstructure"), boost::none, boost::none, bridge_placement, nullptr, boost::none, 
+      Schema::IfcElementCompositionEnum::IfcElementComposition_PARTIAL, 
+      bridge_part_type, 
+      Schema::IfcFacilityUsageEnum::IfcFacilityUsage_LONGITUDINAL);
+   file.addEntity(superstructure);
+   related_elements->push(superstructure);
 
    GroupIndexType nGroups = pBridge->GetGirderGroupCount();
    for (GroupIndexType grpIdx = 0; grpIdx < nGroups; grpIdx++)
