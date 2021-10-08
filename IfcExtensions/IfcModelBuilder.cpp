@@ -617,6 +617,8 @@ typename Schema::IfcAlignment* CreateAlignment_4x3(IfcHierarchyHelper<Schema>& f
       local_placement = file.addLocalPlacement();
    }
 
+#pragma Reminder("Consider using IfcSectionedSurface for the geometric representation of the roadway surface.")
+
    GET_IFACE2(pBroker, IRoadwayData, pRoadwayData);
    std::string strAlignmentName(T2A(pRoadwayData->GetAlignmentData2().Name.c_str()));
    if (strAlignmentName.length() == 0) strAlignmentName = "Unnamed";
