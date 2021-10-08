@@ -59,13 +59,16 @@ private:
    Float64 GetStartDistAlong(Ifc4x3_rc4::IfcAlignmentHorizontal* pHorizontal);
 
    template <typename Schema>
+   void GetStations(typename Schema::IfcAlignment* pAlignment, std::vector<std::pair<Float64, Float64>>& vStations, std::vector<std::tuple<Float64, Float64, Float64>>& vStationEquations);
+
+   template <typename Schema>
    void LoadAlignment(typename Schema::IfcAlignment* pAlignment);
 
    template <typename Schema>
-   Float64 LoadAlignment_4x3(IfcParse::IfcFile& file,typename Schema::IfcAlignment* pAlignment);
+   void LoadProfile(typename Schema::IfcAlignment* pAlignment);
 
    template <typename Schema>
-   void LoadProfile(typename Schema::IfcAlignment* pAlignment);
+   Float64 LoadAlignment_4x3(IfcParse::IfcFile& file,typename Schema::IfcAlignment* pAlignment);
 
    template <typename Schema>
    void LoadProfile_4x3(IfcParse::IfcFile& file, typename Schema::IfcAlignment* pAlignment,Float64 stationAdjustment);

@@ -1029,6 +1029,88 @@ Float64 CIfcAlignmentConverter::GetStartDistAlong(Ifc4x3_rc4::IfcAlignmentHorizo
 }
 
 template <typename Schema>
+void CIfcAlignmentConverter::GetStations(typename Schema::IfcAlignment* pAlignment, std::vector<std::pair<Float64, Float64>>& vStations, std::vector<std::tuple<Float64, Float64, Float64>>& vStationEquations)
+{
+   auto nested = pAlignment->IsNestedBy();
+   for (auto rel_nests : *nested)
+   {
+      ATLASSERT(rel_nests->RelatingObject() == pAlignment);
+      auto related_objects = rel_nests->RelatedObjects();
+      for (auto related_object : *related_objects)
+      {
+         auto referent = related_object->as<Schema::IfcReferent>();
+         if (referent && referent->hasPredefinedType() && referent->PredefinedType() == Schema::IfcReferentTypeEnum::IfcReferentType_STATION)
+         {
+            Float64 distance_along = 0;
+            if (referent->hasObjectPlacement())
+            {
+               auto object_placement = referent->ObjectPlacement();
+               auto linear_placement = object_placement->as<Schema::IfcLinearPlacement>();
+               if (linear_placement)
+               {
+                  // get the distance along the curve for the placement of the referent
+                  auto axis2placementlinear = linear_placement->RelativePlacement();
+                  auto location = axis2placementlinear->Location();
+                  auto point_by_distance_expression = location->as<Schema::IfcPointByDistanceExpression>();
+                  if (point_by_distance_expression)
+                  {
+                     distance_along = *(point_by_distance_expression->DistanceAlong()->as<Schema::IfcNonNegativeLengthMeasure>());
+                  }
+               }
+            }
+
+            auto rel_defines_by_properties = referent->IsDefinedBy();
+            for (auto rel_defines_property : *rel_defines_by_properties)
+            {
+               auto property_set = rel_defines_property->RelatingPropertyDefinition()->as<Schema::IfcPropertySet>();
+               if (property_set->Name() == "Pset_Stationing")
+               {
+                  bool bHasStation = false;
+                  bool bHasIncomingStation = false;
+                  Float64 station, incoming_station;
+                  auto properties = property_set->HasProperties();
+                  for (auto prop : *properties)
+                  {
+                     if (prop->Name() == "Station")
+                     {
+                        auto single_value_property = prop->as<Schema::IfcPropertySingleValue>();
+                        if (single_value_property->hasNominalValue())
+                        {
+                           bHasStation = true;
+                           station = *(single_value_property->NominalValue()->as<Schema::IfcLengthMeasure>());
+                        }
+                     }
+                     else if (prop->Name() == "IncomingStation")
+                     {
+                        auto single_value_property = prop->as<Schema::IfcPropertySingleValue>();
+                        if (single_value_property->hasNominalValue())
+                        {
+                           bHasIncomingStation = true;
+                           incoming_station = *(single_value_property->NominalValue()->as<Schema::IfcLengthMeasure>());
+                        }
+                     }
+                  }
+
+                  if (bHasStation && bHasIncomingStation)
+                  {
+                     vStationEquations.emplace_back(distance_along, incoming_station, station);
+                  }
+                  else if (bHasStation && !bHasIncomingStation)
+                  {
+                     vStations.emplace_back(distance_along, station);
+                  }
+                  else
+                  {
+                     ATLASSERT(false); // not expecting incoming station without station
+                  }
+               }
+            }
+         }
+      }
+   }
+}
+
+template <typename Schema>
 Float64 CIfcAlignmentConverter::LoadAlignment_4x3(IfcParse::IfcFile& file, typename Schema::IfcAlignment* pAlignment)
 {
     USES_CONVERSION;
@@ -1043,66 +1125,21 @@ Float64 CIfcAlignmentConverter::LoadAlignment_4x3(IfcParse::IfcFile& file, typen
     m_AlignmentData.RefStation = 0.00;
     m_AlignmentData.CompoundCurves.clear();
 
+    std::vector<std::pair<Float64, Float64>> vStations; // distance along, station
+    std::vector<std::tuple<Float64, Float64, Float64>> vStationEquations; // distance along, incoming station, station
+    GetStations<Schema>(pAlignment, vStations, vStationEquations);
+
     Float64 station_adjustment = 0;
 
+    if (0 < vStations.size())
     {
-       auto nested = pAlignment->IsNestedBy();
-       for (auto rel_nests : *nested)
-       {
-          ATLASSERT(rel_nests->RelatingObject() == pAlignment);
-          auto related_objects = rel_nests->RelatedObjects();
-          for (auto related_object : *related_objects)
-          {
-             auto referent = related_object->as<Schema::IfcReferent>();
-             if (referent && referent->hasPredefinedType() && referent->PredefinedType() == Schema::IfcReferentTypeEnum::IfcReferentType_STATION)
-             {
-                auto rel_defines_by_properties = referent->IsDefinedBy();
-                for (auto rel_defines_property : *rel_defines_by_properties)
-                {
-                   auto property_set = rel_defines_property->RelatingPropertyDefinition()->as<Schema::IfcPropertySet>();
-                   if (property_set->Name() == "Pset_Stationing")
-                   {
-                      auto properties = property_set->HasProperties();
-                      for (auto prop : *properties)
-                      {
-                         if (prop->Name() == "Station")
-                         {
-                            auto single_value_property = prop->as<Schema::IfcPropertySingleValue>();
-                            if (single_value_property->hasNominalValue())
-                            {
-                               Float64 value = *(single_value_property->NominalValue()->as<Schema::IfcLengthMeasure>());
-                               m_AlignmentData.RefStation = value;
+       m_AlignmentData.RefStation = vStations.front().second; // .second is the station value
+       station_adjustment = m_AlignmentData.RefStation - vStations.front().first; // .first is the distance along value
+    }
 
-                               if (referent->hasObjectPlacement())
-                               {
-                                  auto object_placement = referent->ObjectPlacement();
-                                  auto linear_placement = object_placement->as<Schema::IfcLinearPlacement>();
-                                  if (linear_placement)
-                                  {
-                                     // get the distance along the curve for the placement of the referent
-                                     // then update all of the alignment parts with (RefStation - distAlong)
-                                     auto axis2placementlinear = linear_placement->RelativePlacement();
-                                     auto location = axis2placementlinear->Location();
-                                     auto point_by_distance_expression = location->as<Schema::IfcPointByDistanceExpression>();
-                                     if (point_by_distance_expression)
-                                     {
-                                        Float64 distance_along = *(point_by_distance_expression->DistanceAlong()->as<Schema::IfcNonNegativeLengthMeasure>());
-                                        station_adjustment = m_AlignmentData.RefStation - distance_along;
-                                     }
-                                  }
-                               }
-                            }
-                         }
-                         else if (prop->Name() == "IncomingStation")
-                         {
-                            // this is used for station equations
-                         }
-                      }
-                   }
-                }
-             }
-          }
-       }
+    if (0 < vStationEquations.size())
+    {
+       // we don't handle equations yet, but the underlying COGO model does - need up update PGSuper to model equations
     }
 
     Schema::IfcAlignmentHorizontal* horizontal_alignment = GetAlignmentHorizontal(pAlignment);
