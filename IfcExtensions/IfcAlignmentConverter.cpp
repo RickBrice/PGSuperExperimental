@@ -1996,7 +1996,7 @@ void CIfcAlignmentConverter::GetCurvePoints_4x3(typename Schema::IfcAlignmentHor
    auto R = ::ConvertToSysUnits(pCurve->StartRadiusOfCurvature(), *m_pLengthUnit);
    bool bIsCCW = (R < 0 ? true : false);
 
-   Float64 delta = L / R;
+   Float64 delta = fabs(L / R);
    Float64 T = R*tan(delta / 2);
 
    Float64 sx, sy;
