@@ -25,6 +25,7 @@
 #include "IfcExtensions.h"
 #include "PGSuperDataExporter.h"
 #include "IfcModelBuilder.h"
+#include <MFCTools\Prompts.h>
 
 HRESULT CPGSuperDataExporter::FinalConstruct()
 {
@@ -62,17 +63,15 @@ STDMETHODIMP CPGSuperDataExporter::GetCommandHintText(BSTR*  bstrText) const
 STDMETHODIMP CPGSuperDataExporter::Export(IBroker* pBroker)
 {
    // write some bridge data to a text file
+   int alignment_type = AfxRBChoose(_T("Alignment Geometric Representation"), _T("Select a geometric representation of the alignment"), _T("IfcPolyline (3D Wire)\nIfcGradientCurve"));
+   CIfcModelBuilder::SchemaType schemaType = (CIfcModelBuilder::SchemaType)AfxRBChoose(_T("Format"), _T("Select IFC Format"), _T("IFC 4x3 RC3\nIFC 4x3 RC4"));
 	CFileDialog  dlg(FALSE,_T("ifc"),_T("PGSuperExport.ifc"),OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, _T("IFC File(*.ifc)|*.ifc||"));
 	if (dlg.DoModal() == IDOK)
 	{
 		CString file_path = dlg.GetPathName();
 
        CIfcModelBuilder builder;
-#if defined EXPORT_IFC_4x3_rc3
-       builder.BuildModel(pBroker, file_path, CIfcModelBuilder::Schema_4x3_rc3);
-#else
-       builder.BuildModel(pBroker, file_path, CIfcModelBuilder::Schema_4x3_rc4);
-#endif
+       builder.BuildModel(pBroker, file_path, schemaType, alignment_type == 0 ? true : false);
    }
 
    return S_OK;

@@ -125,17 +125,10 @@ typename Schema::IfcCartesianPoint* ConvertPoint(IPoint2d* pPoint)
 }
 
 template <typename Schema>
-#if defined APPROXIMATE_ALIGNMENT_GEOMETRY
-void CreateHorizontalAlignment_4x3(IfcHierarchyHelper<Schema>& file,IBroker* pBroker, typename Schema::IfcAlignmentHorizontal** phorizontal_alignment/*, typename Schema::IfcCompositeCurve** phorizontal_geometry_base_curve*/)
-#else
-void CreateHorizontalAlignment_4x3(IfcHierarchyHelper<Schema>& file,IBroker* pBroker,  typename Schema::IfcAlignmentHorizontal** phorizontal_alignment, typename Schema::IfcCompositeCurve** phorizontal_geometry_base_curve)
-#endif
+void CreateHorizontalAlignment_4x3(IfcHierarchyHelper<Schema>& file,IBroker* pBroker, typename Schema::IfcAlignmentHorizontal** phorizontal_alignment, typename Schema::IfcCompositeCurve** phorizontal_geometry_base_curve)
 {
-    boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcObjectDefinition>> alignment_segments(new IfcTemplatedEntityList<Schema::IfcObjectDefinition>());
-
-#if !defined APPROXIMATE_ALIGNMENT_GEOMETRY
+   boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcObjectDefinition>> alignment_segments(new IfcTemplatedEntityList<Schema::IfcObjectDefinition>());
    boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcSegment>> curve_segments(new IfcTemplatedEntityList<Schema::IfcSegment>());
-#endif
 
    GET_IFACE2(pBroker, IRoadway, pAlignment);
    Float64 startStation, startElevation, startGrade;
@@ -172,7 +165,6 @@ void CreateHorizontalAlignment_4x3(IfcHierarchyHelper<Schema>& file,IBroker* pBr
          file.addEntity(segment);
          alignment_segments->push(segment);
 
-#if !defined APPROXIMATE_ALIGNMENT_GEOMETRY
          boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcCartesianPoint>> points(new IfcTemplatedEntityList<Schema::IfcCartesianPoint>());
          points->push(ifc_prev_point);
          points->push(ConvertPoint<Schema>(pntTS));
@@ -180,7 +172,6 @@ void CreateHorizontalAlignment_4x3(IfcHierarchyHelper<Schema>& file,IBroker* pBr
          auto placement = new Schema::IfcAxis2Placement2D(ifc_prev_point, new Schema::IfcDirection(std::vector<double>{cos(angle), sin(angle)}));
          auto curve_segment = new Schema::IfcCurveSegment(Schema::IfcTransitionCode::IfcTransitionCode_CONTSAMEGRADIENT, placement, new Schema::IfcNonNegativeLengthMeasure(0.0), new Schema::IfcNonNegativeLengthMeasure(dist), parent_curve);
          curve_segments->push(curve_segment);
-#endif
       }
 
       // create this horizontal curve
@@ -217,13 +208,11 @@ void CreateHorizontalAlignment_4x3(IfcHierarchyHelper<Schema>& file,IBroker* pBr
          file.addEntity(segment);
          alignment_segments->push(segment);
 
-#if !defined APPROXIMATE_ALIGNMENT_GEOMETRY
-         Float64 A = (bIsCCW ? 1.0 : -1.0)*sqrt(Lspiral[spEntry] / R);
+         Float64 A = (bIsCCW ? 1.0 : -1.0) * sqrt(Lspiral[spEntry] / R);
          auto parent_curve = new Schema::IfcClothoid(ifc_start, A);
          auto placement = new Schema::IfcAxis2Placement2D(ifc_start, new Schema::IfcDirection(std::vector<double>{cos(bk_tangent_direction), sin(bk_tangent_direction)}));
          auto curve_segment = new Schema::IfcCurveSegment(Schema::IfcTransitionCode::IfcTransitionCode_CONTSAMEGRADIENT, placement, new Schema::IfcNonNegativeLengthMeasure(0.0), new Schema::IfcNonNegativeLengthMeasure(Lspiral[spEntry]), parent_curve);
          curve_segments->push(curve_segment);
-#endif
 
          // spiral ends at the Spiral to Curve point (CS)
          CComPtr<IPoint2d> pntSC;
@@ -241,17 +230,15 @@ void CreateHorizontalAlignment_4x3(IfcHierarchyHelper<Schema>& file,IBroker* pBr
       file.addEntity(segment);
       alignment_segments->push(segment);
 
-#if !defined APPROXIMATE_ALIGNMENT_GEOMETRY
       CComPtr<IPoint2d> sc, ccc, cs;
       curve->get_SC(&sc);
       curve->get_CCC(&ccc);
       curve->get_CS(&cs);
       auto ifc_ccc = ConvertPoint<Schema>(ccc);
-      auto parent_curve = new Schema::IfcCircle(ifc_ccc, (bIsCCW ? 1.0 : -1.0)*R); // radius is always a positive value but CW curves don't render correctly in ACCA IFC BIM browser if the radius isn't negative
+      auto parent_curve = new Schema::IfcCircle(ifc_ccc, (bIsCCW ? 1.0 : -1.0) * R); // radius is always a positive value but CW curves don't render correctly in ACCA IFC BIM browser if the radius isn't negative
       auto placement = new Schema::IfcAxis2Placement2D(ifc_start, new Schema::IfcDirection(std::vector<double>{cos(bk_tangent_direction_curve), sin(bk_tangent_direction_curve)}));
       auto curve_segment = new Schema::IfcCurveSegment(Schema::IfcTransitionCode::IfcTransitionCode_CONTSAMEGRADIENT, placement, new Schema::IfcNonNegativeLengthMeasure(0.0), new Schema::IfcNonNegativeLengthMeasure(Lc), parent_curve);
       curve_segments->push(curve_segment);
-#endif
 
       if (0.0 < Lspiral[spExit])
       {
@@ -272,13 +259,11 @@ void CreateHorizontalAlignment_4x3(IfcHierarchyHelper<Schema>& file,IBroker* pBr
          file.addEntity(segment);
          alignment_segments->push(segment);
 
-#if !defined APPROXIMATE_ALIGNMENT_GEOMETRY
-         Float64 A = (bIsCCW ? 1.0 : -1.0)*sqrt(Lspiral[spExit] / R);
+         Float64 A = (bIsCCW ? 1.0 : -1.0) * sqrt(Lspiral[spExit] / R);
          auto parent_curve = new Schema::IfcClothoid(ifc_start, A);
          auto placement = new Schema::IfcAxis2Placement2D(ifc_prev_point, new Schema::IfcDirection(std::vector<double>{cos(fwd_tangent_direction_curve), sin(fwd_tangent_direction_curve)}));
          auto curve_segment = new Schema::IfcCurveSegment(Schema::IfcTransitionCode::IfcTransitionCode_CONTSAMEGRADIENT, placement, new Schema::IfcNonNegativeLengthMeasure(0.0), new Schema::IfcNonNegativeLengthMeasure(Lspiral[spExit]), parent_curve);
          curve_segments->push(curve_segment);
-#endif
       }
 
       // end of this curve (Spiral to Tangent, ST) becomes previous point for next alignment segment
@@ -307,7 +292,6 @@ void CreateHorizontalAlignment_4x3(IfcHierarchyHelper<Schema>& file,IBroker* pBr
       file.addEntity(segment);
       alignment_segments->push(segment);
    
-#if !defined APPROXIMATE_ALIGNMENT_GEOMETRY
       boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcCartesianPoint>> points(new IfcTemplatedEntityList<Schema::IfcCartesianPoint>());
       points->push(ifc_prev_point);
       points->push(ConvertPoint<Schema>(endPoint));
@@ -315,7 +299,6 @@ void CreateHorizontalAlignment_4x3(IfcHierarchyHelper<Schema>& file,IBroker* pBr
       auto placement = new Schema::IfcAxis2Placement2D(ifc_prev_point, new Schema::IfcDirection(std::vector<double>{cos(angle), sin(angle)}));
       auto curve_segment = new Schema::IfcCurveSegment(Schema::IfcTransitionCode::IfcTransitionCode_DISCONTINUOUS, placement, new Schema::IfcNonNegativeLengthMeasure(0.0), new Schema::IfcNonNegativeLengthMeasure(dist), parent_curve);
       curve_segments->push(curve_segment);
-#endif
    }
 
    // create a horizontal alignment from all the alignment segments
@@ -327,24 +310,15 @@ void CreateHorizontalAlignment_4x3(IfcHierarchyHelper<Schema>& file,IBroker* pBr
 
    *phorizontal_alignment = horizontal_alignment;
 
-#if !defined APPROXIMATE_ALIGNMENT_GEOMETRY
    auto composite_curve = new Schema::IfcCompositeCurve(curve_segments, false);
    *phorizontal_geometry_base_curve = composite_curve;
-#endif
 }
 
 template <typename Schema>
-#if defined APPROXIMATE_ALIGNMENT_GEOMETRY
-void CreateVerticalProfile_4x3(IfcHierarchyHelper<Schema>& file, IBroker* pBroker, typename Schema::IfcAlignmentVertical** pvertical_profile, typename Schema::IfcProductDefinitionShape** palignment_product_definition_shape)
-#else
-void CreateVerticalProfile_4x3(IfcHierarchyHelper<Schema>& file, IBroker* pBroker, typename Schema::IfcCompositeCurve* horizontal_geometry_base_curve, typename Schema::IfcAlignmentVertical** pvertical_profile, typename Schema::IfcProductDefinitionShape** palignment_product_definition_shape)
-#endif
+void CreateVerticalProfile_4x3(IfcHierarchyHelper<Schema>& file, IBroker* pBroker, typename Schema::IfcCompositeCurve* horizontal_geometry_base_curve, bool bSimplifiedAlignment, typename Schema::IfcAlignmentVertical** pvertical_profile, typename Schema::IfcProductDefinitionShape** palignment_product_definition_shape)
 {
-    boost::shared_ptr<IfcTemplatedEntityList<typename Schema::IfcObjectDefinition>> profile_segments(new IfcTemplatedEntityList<typename Schema::IfcObjectDefinition>());
-
-#if !defined APPROXIMATE_ALIGNMENT_GEOMETRY
+   boost::shared_ptr<IfcTemplatedEntityList<typename Schema::IfcObjectDefinition>> profile_segments(new IfcTemplatedEntityList<typename Schema::IfcObjectDefinition>());
    boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcSegment>> curve_segments(new IfcTemplatedEntityList<Schema::IfcSegment>());
-#endif
 
    // Profile is defined by profile segments located at "distance from start" of the alignment and "length".
    // We can't use stations to define the profile.
@@ -387,14 +361,15 @@ void CreateVerticalProfile_4x3(IfcHierarchyHelper<Schema>& file, IBroker* pBroke
          file.addEntity(segment);
          profile_segments->push(segment);
 
-#if !defined APPROXIMATE_ALIGNMENT_GEOMETRY
-         auto vertical_point = new Schema::IfcCartesianPoint(std::vector<double>{0.0, prev_end_height});
-         auto gradient_direction = new Schema::IfcDirection(std::vector<double>{cos(prev_end_gradient), sin(prev_end_gradient)});
-         auto parent_curve = new Schema::IfcLine(vertical_point, new Schema::IfcVector(gradient_direction,1.0));
-         auto placement = new Schema::IfcAxis2Placement3D(vertical_point, new Schema::IfcDirection(std::vector<double>{0, 0, 1}), gradient_direction);
-         auto curve_segment = new Schema::IfcCurveSegment(Schema::IfcTransitionCode::IfcTransitionCode_CONTSAMEGRADIENT, placement, new Schema::IfcNonNegativeLengthMeasure(prev_end_dist_along), new Schema::IfcNonNegativeLengthMeasure(length), parent_curve);
-         curve_segments->push(curve_segment);
-#endif
+         if (!bSimplifiedAlignment)
+         {
+            auto vertical_point = new Schema::IfcCartesianPoint(std::vector<double>{0.0, prev_end_height});
+            auto gradient_direction = new Schema::IfcDirection(std::vector<double>{cos(prev_end_gradient), sin(prev_end_gradient)});
+            auto parent_curve = new Schema::IfcLine(vertical_point, new Schema::IfcVector(gradient_direction, 1.0));
+            auto placement = new Schema::IfcAxis2Placement3D(vertical_point, new Schema::IfcDirection(std::vector<double>{0, 0, 1}), gradient_direction);
+            auto curve_segment = new Schema::IfcCurveSegment(Schema::IfcTransitionCode::IfcTransitionCode_CONTSAMEGRADIENT, placement, new Schema::IfcNonNegativeLengthMeasure(prev_end_dist_along), new Schema::IfcNonNegativeLengthMeasure(length), parent_curve);
+            curve_segments->push(curve_segment);
+         }
       }
 
       Float64 l1, l2;
@@ -420,12 +395,11 @@ void CreateVerticalProfile_4x3(IfcHierarchyHelper<Schema>& file, IBroker* pBroke
          curve->get_K1(&k1);
          curve->get_K2(&k2);
 
-         Schema::IfcAlignmentVerticalSegment* parabolic_segment1 = new Schema::IfcAlignmentVerticalSegment(boost::none, boost::none, start_dist_along, l1, start_height, start_gradient, pviGrade, IsZero(k1) ? Float64_Max : 1/k1, Schema::IfcAlignmentVerticalSegmentTypeEnum::IfcAlignmentVerticalSegmentType_PARABOLICARC);
+         Schema::IfcAlignmentVerticalSegment* parabolic_segment1 = new Schema::IfcAlignmentVerticalSegment(boost::none, boost::none, start_dist_along, l1, start_height, start_gradient, pviGrade, IsZero(k1) ? Float64_Max : 1 / k1, Schema::IfcAlignmentVerticalSegmentTypeEnum::IfcAlignmentVerticalSegmentType_PARABOLICARC);
          auto segment1 = new Schema::IfcAlignmentSegment(IfcParse::IfcGlobalId(), file.getSingle<Schema::IfcOwnerHistory>(), boost::none, boost::none, boost::none, nullptr, nullptr, parabolic_segment1);
          file.addEntity(segment1);
          profile_segments->push(segment1);
 
-#if !defined APPROXIMATE_ALIGNMENT_GEOMETRY
          Float64 A1 = (pviGrade - start_gradient) / (2 * l1);
          Float64 B1 = start_gradient;
          Float64 C1 = start_height;
@@ -435,14 +409,12 @@ void CreateVerticalProfile_4x3(IfcHierarchyHelper<Schema>& file, IBroker* pBroke
          auto parent_curve1 = new Schema::IfcPolynomialCurve(placement1, boost::none, std::vector<double>{A1, B1, C1}, boost::none);
          auto curve_segment1 = new Schema::IfcCurveSegment(Schema::IfcTransitionCode::IfcTransitionCode_CONTSAMEGRADIENT, placement1, new Schema::IfcNonNegativeLengthMeasure(start_dist_along), new Schema::IfcNonNegativeLengthMeasure(l1), parent_curve1);
          curve_segments->push(curve_segment1);
-#endif
 
-         Schema::IfcAlignmentVerticalSegment* parabolic_segment2 = new Schema::IfcAlignmentVerticalSegment(boost::none, boost::none, start_dist_along+l1, l2, pviElevation, pviGrade, end_gradient, IsZero(k2) ? Float64_Max : 1/k2, Schema::IfcAlignmentVerticalSegmentTypeEnum::IfcAlignmentVerticalSegmentType_PARABOLICARC);
+         Schema::IfcAlignmentVerticalSegment* parabolic_segment2 = new Schema::IfcAlignmentVerticalSegment(boost::none, boost::none, start_dist_along + l1, l2, pviElevation, pviGrade, end_gradient, IsZero(k2) ? Float64_Max : 1 / k2, Schema::IfcAlignmentVerticalSegmentTypeEnum::IfcAlignmentVerticalSegmentType_PARABOLICARC);
          auto segment2 = new Schema::IfcAlignmentSegment(IfcParse::IfcGlobalId(), file.getSingle<Schema::IfcOwnerHistory>(), boost::none, boost::none, boost::none, nullptr, nullptr, parabolic_segment2);
          file.addEntity(segment2);
          profile_segments->push(segment2);
 
-#if !defined APPROXIMATE_ALIGNMENT_GEOMETRY
          Float64 A2 = (end_gradient - pviGrade) / (2 * l2);
          Float64 B2 = pviGrade;
          Float64 C2 = pviElevation;
@@ -450,9 +422,8 @@ void CreateVerticalProfile_4x3(IfcHierarchyHelper<Schema>& file, IBroker* pBroke
          auto gradient_direction2 = new Schema::IfcDirection(std::vector<double>{cos(pviGrade), sin(pviGrade)});
          auto placement2 = new Schema::IfcAxis2Placement3D(vertical_point2, new Schema::IfcDirection(std::vector<double>{0, 0, 1}), gradient_direction1);
          auto parent_curve2 = new Schema::IfcPolynomialCurve(placement2, boost::none, std::vector<double>{A2, B1, C2}, boost::none);
-         auto curve_segment2 = new Schema::IfcCurveSegment(Schema::IfcTransitionCode::IfcTransitionCode_CONTSAMEGRADIENT, placement2, new Schema::IfcNonNegativeLengthMeasure(start_dist_along+l1), new Schema::IfcNonNegativeLengthMeasure(l2), parent_curve2);
+         auto curve_segment2 = new Schema::IfcCurveSegment(Schema::IfcTransitionCode::IfcTransitionCode_CONTSAMEGRADIENT, placement2, new Schema::IfcNonNegativeLengthMeasure(start_dist_along + l1), new Schema::IfcNonNegativeLengthMeasure(l2), parent_curve2);
          curve_segments->push(curve_segment2);
-#endif
       }
       else
       {
@@ -470,25 +441,22 @@ void CreateVerticalProfile_4x3(IfcHierarchyHelper<Schema>& file, IBroker* pBroke
             file.addEntity(segment);
             profile_segments->push(segment);
 
-#if !defined APPROXIMATE_ALIGNMENT_GEOMETRY
             auto vertical_point = new Schema::IfcCartesianPoint(std::vector<double>{0.0, prev_end_height});
             auto gradient_direction = new Schema::IfcDirection(std::vector<double>{cos(start_gradient), sin(start_gradient)});
             auto parent_curve = new Schema::IfcLine(vertical_point, new Schema::IfcVector(gradient_direction, 1.0));
             auto placement = new Schema::IfcAxis2Placement3D(vertical_point, new Schema::IfcDirection(std::vector<double>{0, 0, 1}), gradient_direction);
             auto curve_segment = new Schema::IfcCurveSegment(Schema::IfcTransitionCode::IfcTransitionCode_CONTSAMEGRADIENT, placement, new Schema::IfcNonNegativeLengthMeasure(prev_end_dist_along), new Schema::IfcNonNegativeLengthMeasure(l1), parent_curve);
             curve_segments->push(curve_segment);
-#endif
          }
          else
          {
             Float64 k;
             curve->get_K1(&k);
-            Schema::IfcAlignmentVerticalSegment* parabolic_segment = new Schema::IfcAlignmentVerticalSegment(boost::none, boost::none, start_dist_along, horizontal_length, start_height, start_gradient, end_gradient, IsZero(k) ? Float64_Max : 1/k, Schema::IfcAlignmentVerticalSegmentTypeEnum::IfcAlignmentVerticalSegmentType_PARABOLICARC);
+            Schema::IfcAlignmentVerticalSegment* parabolic_segment = new Schema::IfcAlignmentVerticalSegment(boost::none, boost::none, start_dist_along, horizontal_length, start_height, start_gradient, end_gradient, IsZero(k) ? Float64_Max : 1 / k, Schema::IfcAlignmentVerticalSegmentTypeEnum::IfcAlignmentVerticalSegmentType_PARABOLICARC);
             auto segment = new Schema::IfcAlignmentSegment(IfcParse::IfcGlobalId(), file.getSingle<Schema::IfcOwnerHistory>(), boost::none, boost::none, boost::none, nullptr, nullptr, parabolic_segment);
             file.addEntity(segment);
             profile_segments->push(segment);
 
-#if !defined APPROXIMATE_ALIGNMENT_GEOMETRY
             Float64 A = (end_gradient - start_gradient) / (2 * horizontal_length);
             Float64 B = start_gradient;
             Float64 C = start_height;
@@ -498,7 +466,6 @@ void CreateVerticalProfile_4x3(IfcHierarchyHelper<Schema>& file, IBroker* pBroke
             auto parent_curve = new Schema::IfcPolynomialCurve(placement, boost::none, std::vector<double>{A, B, C}, boost::none);
             auto curve_segment = new Schema::IfcCurveSegment(Schema::IfcTransitionCode::IfcTransitionCode_CONTSAMEGRADIENT, placement, new Schema::IfcNonNegativeLengthMeasure(start_dist_along), new Schema::IfcNonNegativeLengthMeasure(horizontal_length), parent_curve);
             curve_segments->push(curve_segment);
-#endif
          }
       }
 
@@ -527,17 +494,15 @@ void CreateVerticalProfile_4x3(IfcHierarchyHelper<Schema>& file, IBroker* pBroke
       file.addEntity(segment);
       profile_segments->push(segment);
 
-#if !defined APPROXIMATE_ALIGNMENT_GEOMETRY
       auto vertical_point = new Schema::IfcCartesianPoint(std::vector<double>{0.0, prev_end_height});
       auto gradient_direction = new Schema::IfcDirection(std::vector<double>{cos(prev_end_gradient), sin(prev_end_gradient)});
       auto parent_curve = new Schema::IfcLine(vertical_point, new Schema::IfcVector(gradient_direction, 1.0));
       auto placement = new Schema::IfcAxis2Placement3D(vertical_point, new Schema::IfcDirection(std::vector<double>{0, 0, 1}), gradient_direction);
       auto curve_segment = new Schema::IfcCurveSegment(Schema::IfcTransitionCode::IfcTransitionCode_DISCONTINUOUS, placement, new Schema::IfcNonNegativeLengthMeasure(prev_end_dist_along), new Schema::IfcNonNegativeLengthMeasure(length), parent_curve);
       curve_segments->push(curve_segment);
-#endif
 
       // check elevation
-      ATLASSERT(IsEqual(endElevation, prev_end_height + length*prev_end_gradient));
+      ATLASSERT(IsEqual(endElevation, prev_end_height + length * prev_end_gradient));
    }
 
    auto vertical_profile = new Schema::IfcAlignmentVertical(IfcParse::IfcGlobalId(), file.getSingle<Schema::IfcOwnerHistory>(), std::string("Vert Alignment"), boost::none, boost::none, file.getSingle<Schema::IfcLocalPlacement>(), nullptr);
@@ -549,30 +514,33 @@ void CreateVerticalProfile_4x3(IfcHierarchyHelper<Schema>& file, IBroker* pBroke
    *pvertical_profile = vertical_profile;
 
    boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcRepresentationItem>> representation_items(new IfcTemplatedEntityList<Schema::IfcRepresentationItem>());
-#if defined APPROXIMATE_ALIGNMENT_GEOMETRY
-   // Instead of IfcGradientCurve, we are using a generalized 3D polyline geometric representation of the alignment (a 3D wire)
-   // This isn't as accurate, but some viewer may be able to deal with this better
-   IndexType nAlignmentPoints = 100;
-   Float64 stationInc = (endStation - startStation) / (nAlignmentPoints + 1);
-   boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcCartesianPoint>> points(new IfcTemplatedEntityList<Schema::IfcCartesianPoint>());
-   for (IndexType i = 0; i <= nAlignmentPoints; i++)
+   if (bSimplifiedAlignment)
    {
-       Float64 offset = 0.0;
-       Float64 station = startStation + i * stationInc;
-       CComPtr<IPoint2d> pnt;
-       pAlignment->GetPoint(station, offset, nullptr /*normal offset*/, pgsTypes::pcGlobal, &pnt);
-       Float64 x, y;
-       pnt->Location(&x, &y);
-       Float64 z = pAlignment->GetElevation(station, offset);
+      // Instead of IfcGradientCurve, we are using a generalized 3D polyline geometric representation of the alignment (a 3D wire)
+      // This isn't as accurate, but some viewer may be able to deal with this better
+      IndexType nAlignmentPoints = 100;
+      Float64 stationInc = (endStation - startStation) / (nAlignmentPoints + 1);
+      boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcCartesianPoint>> points(new IfcTemplatedEntityList<Schema::IfcCartesianPoint>());
+      for (IndexType i = 0; i <= nAlignmentPoints; i++)
+      {
+         Float64 offset = 0.0;
+         Float64 station = startStation + i * stationInc;
+         CComPtr<IPoint2d> pnt;
+         pAlignment->GetPoint(station, offset, nullptr /*normal offset*/, pgsTypes::pcGlobal, &pnt);
+         Float64 x, y;
+         pnt->Location(&x, &y);
+         Float64 z = pAlignment->GetElevation(station, offset);
 
-       points->push(new Schema::IfcCartesianPoint(std::vector<Float64>{x, y, z}));
+         points->push(new Schema::IfcCartesianPoint(std::vector<Float64>{x, y, z}));
+      }
+      auto polyline = new Schema::IfcPolyline(points);
+      representation_items->push(polyline);
    }
-   auto polyline = new Schema::IfcPolyline(points);
-   representation_items->push(polyline);
-#else
-   auto gradient_curve = new Schema::IfcGradientCurve(curve_segments, false, horizontal_geometry_base_curve, nullptr);
-   representation_items->push(gradient_curve);
-#endif
+   else
+   {
+      auto gradient_curve = new Schema::IfcGradientCurve(curve_segments, false, horizontal_geometry_base_curve, nullptr);
+      representation_items->push(gradient_curve);
+   }
 
    auto geometric_representation_context = file.getRepresentationContext(std::string("3D"));
    ATLASSERT(geometric_representation_context);
@@ -587,24 +555,16 @@ void CreateVerticalProfile_4x3(IfcHierarchyHelper<Schema>& file, IBroker* pBroke
 }
 
 template <typename Schema>
-typename Schema::IfcAlignment* CreateAlignment_4x3(IfcHierarchyHelper<Schema>& file, IBroker* pBroker)
+typename Schema::IfcAlignment* CreateAlignment_4x3(IfcHierarchyHelper<Schema>& file, IBroker* pBroker,bool bSimplifiedAlignment)
 {
    USES_CONVERSION;
    Schema::IfcAlignmentHorizontal* horizontal_alignment;
-#if defined APPROXIMATE_ALIGNMENT_GEOMETRY
-   CreateHorizontalAlignment_4x3<Schema>(file, pBroker, &horizontal_alignment);
-#else
    Schema::IfcCompositeCurve* horizontal_geometry_base_curve;
    CreateHorizontalAlignment_4x3<Schema>(file, pBroker, &horizontal_alignment, &horizontal_geometry_base_curve);
-#endif
 
    Schema::IfcAlignmentVertical* vertical_profile;
    Schema::IfcProductDefinitionShape* alignment_product_definition_shape;
-#if defined APPROXIMATE_ALIGNMENT_GEOMETRY
-   CreateVerticalProfile_4x3<Schema>(file, pBroker, &vertical_profile, &alignment_product_definition_shape);
-#else
-   CreateVerticalProfile_4x3<Schema>(file, pBroker, horizontal_geometry_base_curve, &vertical_profile, &alignment_product_definition_shape);
-#endif
+   CreateVerticalProfile_4x3<Schema>(file, pBroker, horizontal_geometry_base_curve, bSimplifiedAlignment, &vertical_profile, &alignment_product_definition_shape);
 
    Schema::IfcObjectPlacement* local_placement;
    auto site = file.getSingle<Schema::IfcSite>();
@@ -1522,15 +1482,12 @@ CIfcModelBuilder::~CIfcModelBuilder(void)
 {
 }
 
-void CIfcModelBuilder::BuildModel(IBroker* pBroker, const CString& strFilePath, CIfcModelBuilder::SchemaType schemaType)
+void CIfcModelBuilder::BuildModel(IBroker* pBroker, const CString& strFilePath, CIfcModelBuilder::SchemaType schemaType, bool bSimplifiedAlignment)
 {
    switch (schemaType)
    {
-#if defined EXPORT_IFC_4x3_rc3
-   case Schema_4x3_rc3: BuildModel<Ifc4x3_rc3>(pBroker, strFilePath); break;
-#else
-   case Schema_4x3_rc4: BuildModel<Ifc4x3_rc4>(pBroker, strFilePath); break;
-#endif
+   case Schema_4x3_rc3: BuildModel<Ifc4x3_rc3>(pBroker, strFilePath, bSimplifiedAlignment); break;
+   case Schema_4x3_rc4: BuildModel<Ifc4x3_rc4>(pBroker, strFilePath, bSimplifiedAlignment); break;
    default:
       ATLASSERT(false); // is there a new schema type
    }
@@ -1619,7 +1576,7 @@ void InitializeFile(IfcHierarchyHelper<Schema>& file, IBroker* pBroker,const CSt
 }
 
 template <typename Schema>
-void CIfcModelBuilder::BuildModel(IBroker* pBroker, const CString& strFilePath)
+void CIfcModelBuilder::BuildModel(IBroker* pBroker, const CString& strFilePath, bool bSimplifiedAlignment)
 {
    USES_CONVERSION;
 
@@ -1628,7 +1585,7 @@ void CIfcModelBuilder::BuildModel(IBroker* pBroker, const CString& strFilePath)
 
    boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcProduct>> related_elements(new IfcTemplatedEntityList<Schema::IfcProduct>());
 
-   auto alignment = CreateAlignment_4x3<Schema>(file, pBroker);
+   auto alignment = CreateAlignment_4x3<Schema>(file, pBroker, bSimplifiedAlignment);
    related_elements->push(alignment);
 
    auto bridge = CreateBridge_4x3<Schema>(file, pBroker, alignment);
