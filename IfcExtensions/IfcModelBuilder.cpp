@@ -513,7 +513,46 @@ void CreateVerticalProfile_4x3(IfcHierarchyHelper<Schema>& file, IBroker* pBroke
 
    *pvertical_profile = vertical_profile;
 
+
    boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcRepresentationItem>> representation_items(new IfcTemplatedEntityList<Schema::IfcRepresentationItem>());
+   
+   // define the roadway surface geometric representation with IfcSectionedSurface
+#pragma Reminder("WORKING HERE - This geometric construction does not take into account the different ways PGSuper defines slope of the roadway section")
+   boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcProfileDef>> cross_sections(new IfcTemplatedEntityList<Schema::IfcProfileDef>());
+   boost::shared_ptr<IfcTemplatedEntityList<Schema::IfcPointByDistanceExpression>> cross_section_positions(new IfcTemplatedEntityList<Schema::IfcPointByDistanceExpression>());
+
+   GET_IFACE2(pBroker, IRoadwayData, pRoadway);
+   const RoadwaySectionData& roadway_sections = pRoadway->GetRoadwaySectionData();
+   Float64 ref_station = pRoadway->GetAlignmentData2().RefStation;
+   for (const RoadwaySectionTemplate& section_template : roadway_sections.RoadwaySectionTemplates)
+   {
+      auto point_on_alignment = new Schema::IfcPointByDistanceExpression(new Schema::IfcNonNegativeLengthMeasure(section_template.Station - ref_station), 0.0, 0.0, 0.0, horizontal_geometry_base_curve);
+      cross_section_positions->push(point_on_alignment);
+
+      std::vector<double> widths;
+      std::vector<double> slopes;
+      if (roadway_sections.NumberOfSegmentsPerSection == 2)
+      {
+         widths.push_back(100);
+         slopes.push_back(section_template.LeftSlope);
+         widths.push_back(100);
+         slopes.push_back(section_template.RightSlope);
+      }
+      else
+      {
+         for (const RoadwaySegmentData& segment_data : section_template.SegmentDataVec)
+         {
+            widths.push_back(segment_data.Length);
+            slopes.push_back(segment_data.Slope);
+         }
+      }
+
+      auto cross_section = new Schema::IfcOpenCrossProfileDef(Schema::IfcProfileTypeEnum::IfcProfileType_CURVE, boost::none, true, widths, slopes, boost::none);
+      cross_sections->push(cross_section);
+   }
+   auto sectioned_surface = new Schema::IfcSectionedSurface(horizontal_geometry_base_curve, cross_section_positions, cross_sections, false);
+   representation_items->push(sectioned_surface);
+
    if (bSimplifiedAlignment)
    {
       // Instead of IfcGradientCurve, we are using a generalized 3D polyline geometric representation of the alignment (a 3D wire)
@@ -576,8 +615,6 @@ typename Schema::IfcAlignment* CreateAlignment_4x3(IfcHierarchyHelper<Schema>& f
    {
       local_placement = file.addLocalPlacement();
    }
-
-#pragma Reminder("Consider using IfcSectionedSurface for the geometric representation of the roadway surface.")
 
    GET_IFACE2(pBroker, IRoadwayData, pRoadwayData);
    std::string strAlignmentName(T2A(pRoadwayData->GetAlignmentData2().Name.c_str()));
