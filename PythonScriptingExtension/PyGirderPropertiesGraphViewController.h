@@ -2,7 +2,7 @@
 
 #include "PyViewControllerBase.h"
 #include <EAF\EAFViewController.h>
-#include <Graphing\GirderPropertiesGraphViewController.h>
+#include <Graphs\GirderPropertiesGraphViewController.h>
 
 class CPyGirderPropertiesGraphViewController : public CPyViewControllerBase
 {

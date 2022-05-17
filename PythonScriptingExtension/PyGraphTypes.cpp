@@ -4,12 +4,12 @@
 
 #include "PyGraphTypes.h"
 
-#include <Graphing\StabilityGraphViewController.h>
-#include <Graphing\EffectivePrestressGraphViewController.h>
-#include <Graphing\ConcretePropertiesGraphViewController.h>
-#include <Graphing\DeflectionHistoryGraphViewController.h>
-#include <Graphing\StressHistoryGraphViewController.h>
-#include <Graphing\AnalysisResultsGraphViewController.h>
+#include <Graphs\StabilityGraphViewController.h>
+#include <Graphs\EffectivePrestressGraphViewController.h>
+#include <Graphs\ConcretePropertiesGraphViewController.h>
+#include <Graphs\DeflectionHistoryGraphViewController.h>
+#include <Graphs\StressHistoryGraphViewController.h>
+#include <Graphs\AnalysisResultsGraphViewController.h>
 
 #include "PyStabilityGraphViewController.h"
 #include "PyEffectivePrestressGraphViewController.h"

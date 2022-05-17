@@ -2,7 +2,7 @@
 
 #include "PyViewControllerBase.h"
 #include <EAF\EAFViewController.h>
-#include <Graphing\StabilityGraphViewController.h>
+#include <Graphs\StabilityGraphViewController.h>
 
 class CPyStabilityGraphViewController : public CPyViewControllerBase
 {

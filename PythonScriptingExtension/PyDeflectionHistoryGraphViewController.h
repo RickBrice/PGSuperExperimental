@@ -2,7 +2,7 @@
 
 #include "PyViewControllerBase.h"
 #include <EAF\EAFViewController.h>
-#include <Graphing\DeflectionHistoryGraphViewController.h>
+#include <Graphs\DeflectionHistoryGraphViewController.h>
 
 class CPyDeflectionHistoryGraphViewController : public CPyViewControllerBase
 {
