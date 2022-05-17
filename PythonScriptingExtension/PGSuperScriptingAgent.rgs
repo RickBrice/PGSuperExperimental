@@ -1,0 +1,25 @@
+HKCR
+{
+	BridgeSightPGSuperScriptingExtension.PGSuperScriptingAgent.1 = s 'BridgeSight PGSuper Scripting Agent'
+	{
+		CLSID = s '{9AD09682-03D8-42CF-B17A-6E679ABFD880}'
+	}
+	BridgeSightPGSuperScriptingExtension.PGSuperScriptingAgent = s 'BridgeSight PGSuper Scripting Agent'
+	{
+		CLSID = s '{9AD09682-03D8-42CF-B17A-6E679ABFD880}'
+		CurVer = s 'BridgeSightPGSuperScriptingExtension.PGSuperScriptingAgent.1'
+	}
+	NoRemove CLSID
+	{
+		ForceRemove {9AD09682-03D8-42CF-B17A-6E679ABFD880} = s 'BridgeSight PGSuper Scripting Agent'
+		{
+			ProgID = s 'BridgeSightPGSuperScriptingExtension.PGSuperScriptingAgent.1'
+			VersionIndependentProgID = s 'BridgeSightPGSuperScriptingExtension.PGSuperScriptingAgent'
+			InprocServer32 = s '%MODULE%'
+			{
+				val ThreadingModel = s 'Apartment'
+			}
+			'TypeLib' = s '{4E7C50C2-59D4-4E54-892C-FB0428A54100}'
+		}
+	}
+}

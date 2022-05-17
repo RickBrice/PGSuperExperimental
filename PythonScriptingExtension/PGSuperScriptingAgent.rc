@@ -1,0 +1,278 @@
+// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#ifndef APSTUDIO_INVOKED
+#include <PGSuperVersion.h>
+#endif
+#include "afxres.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// English (United States) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#ifndef APSTUDIO_INVOKED\r\n"
+    "#include <PGSuperVersion.h>\r\n"
+    "#endif\r\n"
+    "#include ""afxres.h""\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_SCINTILLA_FINDDLGORD DIALOGEX 30, 73, 236, 79
+STYLE DS_SETFONT | DS_MODALFRAME | DS_3DLOOK | DS_FIXEDSYS | DS_CONTEXTHELP | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Find"
+FONT 8, "MS Shell Dlg", 0, 0, 0x0
+BEGIN
+    LTEXT           "Fi&nd what:",-1,4,8,42,8
+    EDITTEXT        1152,47,7,128,12,ES_AUTOHSCROLL | WS_GROUP
+    CONTROL         "Match &whole word only",1040,"Button",BS_AUTOCHECKBOX | WS_GROUP | WS_TABSTOP,4,26,100,12
+    CONTROL         "Match &case",1041,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,4,42,64,12
+    CONTROL         "Regular &expression",IDC_REGULAR_EXPRESSION,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,4,58,83,12
+    GROUPBOX        "Direction",1072,107,26,68,28,WS_GROUP
+    CONTROL         "&Up",1056,"Button",BS_AUTORADIOBUTTON | WS_GROUP,111,38,25,12
+    CONTROL         "&Down",1057,"Button",BS_AUTORADIOBUTTON,138,38,35,12
+    DEFPUSHBUTTON   "&Find Next",IDOK,182,7,50,14,WS_GROUP
+    PUSHBUTTON      "Cancel",IDCANCEL,182,30,50,14
+    PUSHBUTTON      "&Help",1038,182,55,50,14
+END
+
+IDD_SCINTILLA_REPLACEDLGORD DIALOGEX 36, 44, 230, 94
+STYLE DS_SETFONT | DS_MODALFRAME | DS_3DLOOK | DS_FIXEDSYS | DS_CONTEXTHELP | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Replace"
+FONT 8, "MS Shell Dlg", 0, 0, 0x0
+BEGIN
+    LTEXT           "Fi&nd what:",-1,4,9,48,8
+    EDITTEXT        1152,54,7,114,12,ES_AUTOHSCROLL | WS_GROUP
+    LTEXT           "Re&place with:",-1,4,26,48,8
+    EDITTEXT        1153,54,24,114,12,ES_AUTOHSCROLL | WS_GROUP
+    CONTROL         "Match &whole word only",1040,"Button",BS_AUTOCHECKBOX | WS_GROUP | WS_TABSTOP,5,44,104,12
+    CONTROL         "Match &case",1041,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,5,61,59,12
+    CONTROL         "Regular &expression",IDC_REGULAR_EXPRESSION,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,5,77,83,12
+    DEFPUSHBUTTON   "&Find Next",IDOK,174,4,50,14,WS_GROUP
+    PUSHBUTTON      "&Replace",1024,174,21,50,14
+    PUSHBUTTON      "Replace &All",1025,174,38,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,174,55,50,14
+    PUSHBUTTON      "&Help",1038,174,75,50,14
+END
+
+IDD_MACROS DIALOGEX 0, 0, 333, 244
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Macros"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    PUSHBUTTON      "Close",IDCANCEL,276,223,50,14
+    PUSHBUTTON      "Run",IDC_RUN,276,7,50,14
+    PUSHBUTTON      "Debug",IDC_DEBUG,276,27,50,14
+    PUSHBUTTON      "Edit",IDC_EDIT,276,49,50,14
+    PUSHBUTTON      "Create",IDC_CREATE,276,69,50,14
+    PUSHBUTTON      "Delete",IDC_DELETE,276,89,50,14
+    COMBOBOX        IDC_MACROS,7,7,262,196,CBS_SIMPLE | CBS_SORT | WS_VSCROLL | WS_TABSTOP
+END
+
+IDD_CONSOLE DIALOGEX 0, 0, 521, 281
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD | WS_SYSMENU
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "Run",IDC_RUN,464,260,50,14
+    COMBOBOX        IDC_COMMAND,30,261,421,13,CBS_SIMPLE | WS_VSCROLL | WS_TABSTOP
+    EDITTEXT        IDC_OUTPUT,7,7,507,246,ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL | WS_VSCROLL
+    LTEXT           ">>>",IDC_PROMPT,7,261,19,13
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 1,0,0,1
+ PRODUCTVERSION 1,0,0,1
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x4L
+ FILETYPE 0x2L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904e4"
+        BEGIN
+            VALUE "FileDescription", "ScriptingExtensions Module"
+            VALUE "FileVersion", "6.2.0.0"
+            VALUE "InternalName", "ScriptingExtensions"
+            VALUE "LegalCopyright", "Copyright © 1999-2022, Washington State Department of Transportation, All Rights Reserved"
+            VALUE "OriginalFilename", "PGSuperScriptingExtensions.DLL"
+            VALUE "ProductName", "Scripting Module"
+            VALUE "ProductVersion", "6.2.0.0"
+			END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1252
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// REGISTRY
+//
+
+IDR_PGSUPERSCRIPTINGEXTENSION REGISTRY                "PGSuperScriptingExtension.rgs"
+
+IDR_PGSUPERSCRIPTINGAGENT REGISTRY                "PGSuperScriptingAgent.rgs"
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Bitmap
+//
+
+IDR_TOOLBAR             BITMAP                  "toolbar.bmp"
+
+IDB_LOGO                BITMAP                  "logo.bmp"
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Toolbar
+//
+
+IDR_TOOLBAR TOOLBAR 16, 15
+BEGIN
+    BUTTON      ID_MACROS
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Menu
+//
+
+IDR_MENU MENU
+BEGIN
+    POPUP ""
+    BEGIN
+        MENUITEM "Macros",                      ID_RUN_SCRIPT
+        MENUITEM "Interactive",                 ID_INTERACTIVE
+        MENUITEM "Show Console",                IDC_SHOWCONSOLE
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO
+BEGIN
+    IDD_MACROS, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 326
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 237
+    END
+
+    IDD_CONSOLE, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 514
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 274
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// AFX_DIALOG_LAYOUT
+//
+
+IDD_MACROS AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_CONSOLE AFX_DIALOG_LAYOUT
+BEGIN
+    0,
+    100, 0, 0, 0,
+    0, 0, 100, 0,
+    0, 0, 100, 100,
+    0, 0, 0, 0
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE
+BEGIN
+    IDS_PROJNAME            "ExtensionAgentExample"
+END
+
+STRINGTABLE
+BEGIN
+    ID_INTERACTIVE          "Open the interactive scripting window"
+END
+
+STRINGTABLE
+BEGIN
+    ID_NEW_SCRIPT           "Create a new script"
+    ID_OPEN_SCRIPT          "Open a script for editing"
+    ID_RUN_SCRIPT           "Open the Macro Manager"
+    IDC_SHOWCONSOLE         "Toggle Console Window"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SCINTILLA_DEFAULT_PRINT_HEADER "%1 - Printed on %2"
+    IDS_SCINTILLA_DEFAULT_PRINT_FOOTER "Page %1"
+    IDR_PYEDITOR            "Script Editor\nDocument\nPython file\nPython Source Files (*.py)\n.py\nScript.Document.1\nScript Document"
+END
+
+#endif    // English (United States) resources
+/////////////////////////////////////////////////////////////////////////////

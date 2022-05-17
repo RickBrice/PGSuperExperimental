@@ -1,0 +1,289 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectName>PGSuperScriptingExtension</ProjectName>
+    <ProjectGuid>{84AAAD2E-2039-4922-9124-18852C5616F1}</ProjectGuid>
+    <RootNamespace>ExtensionAgentExample</RootNamespace>
+    <Keyword>AtlProj</Keyword>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>v142</PlatformToolset>
+    <UseOfMfc>Dynamic</UseOfMfc>
+    <UseOfAtl>Dynamic</UseOfAtl>
+    <CharacterSet>Unicode</CharacterSet>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>v142</PlatformToolset>
+    <UseOfMfc>Dynamic</UseOfMfc>
+    <UseOfAtl>Dynamic</UseOfAtl>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(ARPDIR)\WBFL\WBFL.props" />
+    <Import Project="$(ARPDIR)\PGSuper\PGSuper.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(ARPDIR)\WBFL\WBFL.props" />
+    <Import Project="$(ARPDIR)\PGSuper\PGSuper.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>14.0.25431.1</_ProjectFileVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>$(ARPDIR)\BridgeLink\RegFreeCOM\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(Platform)\$(Configuration)\</IntDir>
+    <IgnoreImportLibrary>true</IgnoreImportLibrary>
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>$(ARPDIR)\BridgeLink\RegFreeCOM\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(Platform)\$(Configuration)\</IntDir>
+    <IgnoreImportLibrary>true</IgnoreImportLibrary>
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Midl>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MkTypLibCompatible>false</MkTypLibCompatible>
+      <DllDataFileName />
+    </Midl>
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <AdditionalIncludeDirectories>$(PYTHONDIR)\include;\scintilla\include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;_DEBUG;_USRDLL;_ATL_NO_UUIDOF;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderOutputFile>$(IntDir)$(TargetName).pch</PrecompiledHeaderOutputFile>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ProgramDataBaseFileName>$(IntDir)vc.pdb</ProgramDataBaseFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Culture>0x0409</Culture>
+    </ResourceCompile>
+    <Link>
+      <ModuleDefinitionFile>.\PGSuperScriptingExtension.def</ModuleDefinitionFile>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Windows</SubSystem>
+      <TargetMachine>MachineX64</TargetMachine>
+      <AdditionalLibraryDirectories>$(ARPDIR)\BridgeLink\RegFreeCOM\$(Platform)\$(Configuration);$(PYTHONDIR)\libs</AdditionalLibraryDirectories>
+    </Link>
+    <PostBuildEvent>
+      <Command>
+      </Command>
+    </PostBuildEvent>
+    <Manifest>
+      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
+    </Manifest>
+    <CustomBuildStep>
+      <Command>xcopy /y/d $(BOOSTDIR)\stage\lib\boost_python310-vc142-mt-gyd-x64-1_79.dll $(ARPDIR)\BridgeLink\RegFreeCOM\$(Platform)\$(Configuration)\</Command>
+    </CustomBuildStep>
+    <CustomBuildStep>
+      <Outputs>$(ARPDIR)\BridgeLink\RegFreeCOM\$(Platform)\$(Configuration)\boost_python310-vc142-mt-gyd-x64-1_79.dll</Outputs>
+      <Message>Copying boost python to BridgeLink</Message>
+    </CustomBuildStep>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Midl>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DllDataFileName />
+    </Midl>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(PYTHONDIR)\include;\scintilla\include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;xWBFL_MODERNIZATION;NDEBUG;_USRDLL;_ATL_NO_UUIDOF;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderOutputFile>$(IntDir)$(TargetName).pch</PrecompiledHeaderOutputFile>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <ProgramDataBaseFileName>$(IntDir)vc.pdb</ProgramDataBaseFileName>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Culture>0x0409</Culture>
+    </ResourceCompile>
+    <Link>
+      <ModuleDefinitionFile>.\PGSuperScriptingExtension.def</ModuleDefinitionFile>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Windows</SubSystem>
+      <OptimizeReferences>true</OptimizeReferences>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <TargetMachine>MachineX64</TargetMachine>
+      <AdditionalLibraryDirectories>$(ARPDIR)\BridgeLink\RegFreeCOM\$(Platform)\$(Configuration);$(BOOSTDIR)\stage\lib;$(PYTHONDIR)\libs</AdditionalLibraryDirectories>
+    </Link>
+    <PostBuildEvent>
+      <Command>
+      </Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>
+      </Message>
+    </PostBuildEvent>
+    <Manifest>
+      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
+    </Manifest>
+    <CustomBuildStep>
+      <Outputs>$(ARPDIR)\BridgeLink\RegFreeCOM\$(Platform)\$(Configuration)\boost_python310-vc142-mt-x64-1_79.dll</Outputs>
+      <Command>xcopy /y/d $(BOOSTDIR)\stage\lib\boost_python310-vc142-mt-x64-1_79.dll $(ARPDIR)\BridgeLink\RegFreeCOM\$(Platform)\$(Configuration)\</Command>
+      <Message>Copying boost python to BridgeLink</Message>
+    </CustomBuildStep>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="Bindings.cpp" />
+    <ClCompile Include="Console.cpp" />
+    <ClCompile Include="dllmain.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </PrecompiledHeader>
+      <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</CompileAsManaged>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </PrecompiledHeader>
+      <CompileAsManaged Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</CompileAsManaged>
+    </ClCompile>
+    <ClCompile Include="ExceptionHandlers.cpp" />
+    <ClCompile Include="GILManager.cpp" />
+    <ClCompile Include="MacroDlg.cpp" />
+    <ClCompile Include="PGSuperScriptingAgent.cpp" />
+    <ClCompile Include="PGSuperScriptingAgentImp.cpp" />
+    <ClCompile Include="PyAnalysisResultsGraphViewController.cpp" />
+    <ClCompile Include="PyBridge.cpp" />
+    <ClCompile Include="PyBridgeModelView.cpp" />
+    <ClCompile Include="PyBridgeTypes.cpp" />
+    <ClCompile Include="PyConcretePropertiesGraphViewController.cpp" />
+    <ClCompile Include="PyDeflectionHistoryGraphViewController.cpp" />
+    <ClCompile Include="PyEditorDoc.cpp" />
+    <ClCompile Include="PyEditorDocTemplate.cpp" />
+    <ClCompile Include="PyEditorFrame.cpp" />
+    <ClCompile Include="PyEditorView.cpp" />
+    <ClCompile Include="PyEffectiveFlangeWidth.cpp" />
+    <ClCompile Include="PyEffectivePrestressGraphViewController.cpp" />
+    <ClCompile Include="PyEnvironment.cpp" />
+    <ClCompile Include="PyGirderModelView.cpp" />
+    <ClCompile Include="PyGirderPropertiesGraphViewController.cpp" />
+    <ClCompile Include="PyGraphManager.cpp" />
+    <ClCompile Include="PyGraphTypes.cpp" />
+    <ClCompile Include="PyIORedirector.cpp" />
+    <ClCompile Include="PyLimits.cpp" />
+    <ClCompile Include="PyLoadModifiers.cpp" />
+    <ClCompile Include="PyLoadsView.cpp" />
+    <ClCompile Include="PyLossParameters.cpp" />
+    <ClCompile Include="PyMomentCapacity.cpp" />
+    <ClCompile Include="PyPGSuperTypes.cpp" />
+    <ClCompile Include="PyPointOfInterest.cpp" />
+    <ClCompile Include="PyPointOfInterestTypes.cpp" />
+    <ClCompile Include="PyProjectProperties.cpp" />
+    <ClCompile Include="PyReportManager.cpp" />
+    <ClCompile Include="PyRoadway.cpp" />
+    <ClCompile Include="PyScriptEngine.cpp" />
+    <ClCompile Include="PyStabilityGraphViewController.cpp" />
+    <ClCompile Include="PyStressHistoryGraphViewController.cpp" />
+    <ClCompile Include="PyViewControllerBase.cpp" />
+    <ClCompile Include="PyViews.cpp" />
+    <ClCompile Include="PyViewTypes.cpp" />
+    <ClCompile Include="ScintillaCtrl.cpp" />
+    <ClCompile Include="ScintillaDocView.cpp" />
+    <ClCompile Include="ScriptingCommandLineInfo.cpp" />
+    <ClCompile Include="stdafx.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="StreamEdit.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="PGSuperScriptingExtension.def" />
+    <None Include="PGSuperScriptingExtension.rgs" />
+    <None Include="PGSuperScriptingAgent.rgs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Bindings.h" />
+    <ClInclude Include="Console.h" />
+    <ClInclude Include="dllmain.h" />
+    <ClInclude Include="ExceptionHandlers.h" />
+    <ClInclude Include="GILManager.h" />
+    <ClInclude Include="MacroDlg.h" />
+    <ClInclude Include="PGSuperScriptingAgentImp.h" />
+    <ClInclude Include="PyAnalysisResultsGraphViewController.h" />
+    <ClInclude Include="PyBridge.h" />
+    <ClInclude Include="PyBridgeModelView.h" />
+    <ClInclude Include="PyBridgeTypes.h" />
+    <ClInclude Include="PyConcretePropertiesGraphViewController.h" />
+    <ClInclude Include="PyDeflectionHistoryGraphViewController.h" />
+    <ClInclude Include="PyEditorDoc.h" />
+    <ClInclude Include="PyEditorDocTemplate.h" />
+    <ClInclude Include="PyEditorFrame.h" />
+    <ClInclude Include="PyEditorView.h" />
+    <ClInclude Include="PyEffectiveFlangeWidth.h" />
+    <ClInclude Include="PyEffectivePrestressGraphViewController.h" />
+    <ClInclude Include="PyEnvironment.h" />
+    <ClInclude Include="PyGirderModelView.h" />
+    <ClInclude Include="PyGirderPropertiesGraphViewController.h" />
+    <ClInclude Include="PyGraphManager.h" />
+    <ClInclude Include="PyGraphTypes.h" />
+    <ClInclude Include="PyIORedirector.h" />
+    <ClInclude Include="PyLimits.h" />
+    <ClInclude Include="PyLoadModifiers.h" />
+    <ClInclude Include="PyLoadsView.h" />
+    <ClInclude Include="PyLossParameters.h" />
+    <ClInclude Include="PyMomentCapacity.h" />
+    <ClInclude Include="PyPGSuperTypes.h" />
+    <ClInclude Include="PyPointOfInterest.h" />
+    <ClInclude Include="PyPointOfInterestTypes.h" />
+    <ClInclude Include="PyProjectProperties.h" />
+    <ClInclude Include="PyReportManager.h" />
+    <ClInclude Include="PyRoadway.h" />
+    <ClInclude Include="PyScriptEngine.h" />
+    <ClInclude Include="PyStabilityGraphViewController.h" />
+    <ClInclude Include="PyStressHistoryGraphViewController.h" />
+    <ClInclude Include="PyViewControllerBase.h" />
+    <ClInclude Include="PyViews.h" />
+    <ClInclude Include="PyViewTypes.h" />
+    <ClInclude Include="Resource.h" />
+    <ClInclude Include="ScintillaCtrl.h" />
+    <ClInclude Include="ScintillaDocView.h" />
+    <ClInclude Include="Scripting.h" />
+    <ClInclude Include="ScriptingCommandLineInfo.h" />
+    <ClInclude Include="stdafx.h" />
+    <ClInclude Include="StreamEdit.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="PGSuperScriptingAgent.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="logo.bmp" />
+    <Image Include="toolbar.bmp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="ReadMe.txt" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+  <ProjectExtensions>
+    <VisualStudio>
+      <UserProperties RESOURCE_FILE="PGSuperScriptingAgent.rc" />
+    </VisualStudio>
+  </ProjectExtensions>
+</Project>

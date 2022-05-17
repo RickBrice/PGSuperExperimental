@@ -1,0 +1,7 @@
+using python
+: 3.7 # Version
+: F:\\Python\\Python37\\python_d.exe # Python Path
+: F:\\Python\\Python37\\include # include path
+: F:\\Python\\Python37\\libs #lib path
+: <python-debugging>on
+;
