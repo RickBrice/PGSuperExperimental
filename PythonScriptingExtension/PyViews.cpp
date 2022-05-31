@@ -7,6 +7,7 @@
 #include "PyDeflectionHistoryGraphViewController.h"
 #include "PyStressHistoryGraphViewController.h"
 #include "PyAnalysisResultsGraphViewController.h"
+#include "PySegmentAnalysisResultsGraphViewController.h"
 #include "PyGirderPropertiesGraphViewController.h"
 
 #ifdef _DEBUG
@@ -91,6 +92,7 @@ CPyViewControllerBase* CPyViews::CreateGraphContollerWrapper(IEAFViewController*
    CComQIPtr<IDeflectionHistoryGraphViewController> deflectionHistoryController(pController);
    CComQIPtr<IStressHistoryGraphViewController> stressHistoryController(pController);
    CComQIPtr<IAnalysisResultsGraphViewController> analysisResultsController(pController);
+   CComQIPtr<ISegmentAnalysisResultsGraphViewController> segmentAnalysisResultsController(pController);
    CComQIPtr<IGirderPropertiesGraphViewController> girderPropertiesController(pController);
 
    if (stabilityGraphController)
@@ -127,6 +129,12 @@ CPyViewControllerBase* CPyViews::CreateGraphContollerWrapper(IEAFViewController*
    {
       auto controller = std::make_unique<CPyAnalysisResultsGraphViewController>();
       controller->Init(analysisResultsController);
+      return controller.release();
+   }
+   else if (segmentAnalysisResultsController)
+   {
+      auto controller = std::make_unique<CPySegmentAnalysisResultsGraphViewController>();
+      controller->Init(segmentAnalysisResultsController);
       return controller.release();
    }
    else if (girderPropertiesController)

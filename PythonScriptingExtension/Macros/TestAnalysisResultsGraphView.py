@@ -35,7 +35,7 @@ def CreateGraphs(girderKey):
 
 pgsuper = BridgeLink.GetPGSuper()
 
-graph_controller = pgsuper.Views.CreateGraphViewByName("Analysis Results")
+graph_controller = pgsuper.Views.CreateGraphViewByName("Analysis Results - On site")
 analysis_results_graph = BridgeLink.AnalysisResultsGraph.GetGraphController(graph_controller)
 
 ## plot a specific graph

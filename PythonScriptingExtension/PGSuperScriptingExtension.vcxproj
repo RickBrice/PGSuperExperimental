@@ -198,6 +198,7 @@
     <ClCompile Include="PyReportManager.cpp" />
     <ClCompile Include="PyRoadway.cpp" />
     <ClCompile Include="PyScriptEngine.cpp" />
+    <ClCompile Include="PySegmentAnalysisResultsGraphViewController.cpp" />
     <ClCompile Include="PyStabilityGraphViewController.cpp" />
     <ClCompile Include="PyStressHistoryGraphViewController.cpp" />
     <ClCompile Include="PyViewControllerBase.cpp" />
@@ -255,6 +256,7 @@
     <ClInclude Include="PyReportManager.h" />
     <ClInclude Include="PyRoadway.h" />
     <ClInclude Include="PyScriptEngine.h" />
+    <ClInclude Include="PySegmentAnalysisResultsGraphViewController.h" />
     <ClInclude Include="PyStabilityGraphViewController.h" />
     <ClInclude Include="PyStressHistoryGraphViewController.h" />
     <ClInclude Include="PyViewControllerBase.h" />
@@ -274,9 +276,6 @@
   <ItemGroup>
     <Image Include="logo.bmp" />
     <Image Include="toolbar.bmp" />
-  </ItemGroup>
-  <ItemGroup>
-    <Text Include="ReadMe.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

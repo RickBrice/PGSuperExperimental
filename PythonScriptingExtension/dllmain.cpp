@@ -335,7 +335,7 @@ CExtensionApp theApp;
 
 BOOL CExtensionApp::InitInstance()
 {
-   SetRegistryKey(_T("BridgeSight"));
+   SetRegistryKey(_T("Washington State Department of Transportation"));
    ReadSettings();
 
    if (m_pDocManager == nullptr)
@@ -419,7 +419,7 @@ void CExtensionApp::ReadSettings()
    ATLASSERT(SUCCEEDED(hr));
 
    CString strDefaultPath;
-   strDefaultPath.Format(_T("%s\\BridgeSight\\PGSuper\\Scripts"), path);
+   strDefaultPath.Format(_T("%s\\PGSuper\\Scripts"), path);
    m_ScriptPath = GetProfileString(_T("Options"), _T("ScriptPath"), strDefaultPath);
 }
 

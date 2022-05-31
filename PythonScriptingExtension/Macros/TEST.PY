@@ -144,8 +144,8 @@ if __name__ == "__main__" :
    # stress_history_graph.SelectStressLocation(BridgeLink.StressLocation.TopGirder,True)
    # stress_history_graph.SelectStressLocation(BridgeLink.StressLocation.BottomGirder,True)
 
-   graph_controller = pgsuper.Views.CreateGraphViewByName("Analysis Results")
-   analysis_results_graph = BridgeLink.AnalysisResultsGraph.GetGraphController(graph_controller)
+   graph_controller = pgsuper.Views.CreateGraphViewByName("Analysis Results - At Casting Yard")
+   analysis_results_graph = BridgeLink.SegmentAnalysisResultsGraph.GetGraphController(graph_controller)
    analysis_results_graph.ShowGrid = False
    analysis_results_graph.ShowGirder = False
    analysis_results_graph.ResultsType = BridgeLink.AnalysisResultsType.Incremental

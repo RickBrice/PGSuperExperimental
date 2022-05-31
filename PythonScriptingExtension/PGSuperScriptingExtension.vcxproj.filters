@@ -166,6 +166,9 @@
     <ClCompile Include="PyMomentCapacity.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="PySegmentAnalysisResultsGraphViewController.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="PGSuperScriptingExtension.rgs">
@@ -326,6 +329,9 @@
     <ClInclude Include="PyMomentCapacity.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="PySegmentAnalysisResultsGraphViewController.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="PGSuperScriptingAgent.rc">
@@ -339,8 +345,5 @@
     <Image Include="toolbar.bmp">
       <Filter>Resource Files</Filter>
     </Image>
-  </ItemGroup>
-  <ItemGroup>
-    <Text Include="ReadMe.txt" />
   </ItemGroup>
 </Project>
