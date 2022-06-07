@@ -1,20 +1,20 @@
 HKCR
 {
-	BridgeSightPGSuperScriptingExtension.PGSuperScriptingAgent.1 = s 'BridgeSight PGSuper Scripting Agent'
+	PGSuperScriptingExtension.PGSuperScriptingAgent.1 = s 'PGSuper Scripting Agent'
 	{
 		CLSID = s '{9AD09682-03D8-42CF-B17A-6E679ABFD880}'
 	}
-	BridgeSightPGSuperScriptingExtension.PGSuperScriptingAgent = s 'BridgeSight PGSuper Scripting Agent'
+	PGSuperScriptingExtension.PGSuperScriptingAgent = s 'PGSuper Scripting Agent'
 	{
 		CLSID = s '{9AD09682-03D8-42CF-B17A-6E679ABFD880}'
-		CurVer = s 'BridgeSightPGSuperScriptingExtension.PGSuperScriptingAgent.1'
+		CurVer = s 'PGSuperScriptingExtension.PGSuperScriptingAgent.1'
 	}
 	NoRemove CLSID
 	{
-		ForceRemove {9AD09682-03D8-42CF-B17A-6E679ABFD880} = s 'BridgeSight PGSuper Scripting Agent'
+		ForceRemove {9AD09682-03D8-42CF-B17A-6E679ABFD880} = s 'PGSuper Scripting Agent'
 		{
-			ProgID = s 'BridgeSightPGSuperScriptingExtension.PGSuperScriptingAgent.1'
-			VersionIndependentProgID = s 'BridgeSightPGSuperScriptingExtension.PGSuperScriptingAgent'
+			ProgID = s 'PGSuperScriptingExtension.PGSuperScriptingAgent.1'
+			VersionIndependentProgID = s 'PGSuperScriptingExtension.PGSuperScriptingAgent'
 			InprocServer32 = s '%MODULE%'
 			{
 				val ThreadingModel = s 'Apartment'

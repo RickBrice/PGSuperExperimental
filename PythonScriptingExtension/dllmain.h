@@ -22,14 +22,14 @@
 
 // dllmain.h : Declaration of module class.
 
-class CBridgeSightPGSuperScriptingExtensionModule : public CAtlDllModuleT< CBridgeSightPGSuperScriptingExtensionModule >
+class CPGSuperScriptingExtensionModule : public CAtlDllModuleT< CPGSuperScriptingExtensionModule >
 {
 public :
-//	DECLARE_LIBID(LIBID_BridgeSightPGSuperScriptingExtensionLib)
+//	DECLARE_LIBID(LIBID_PGSuperScriptingExtensionLib)
 	DECLARE_REGISTRY_APPID_RESOURCEID(IDR_PGSUPERSCRIPTINGEXTENSION, "{4E7C50C2-59D4-4E54-892C-FB0428A54100}")
 };
 
-extern class CBridgeSightPGSuperScriptingExtensionModule _AtlModule;
+extern class CPGSuperScriptingExtensionModule _AtlModule;
 
 #include "Bindings.h"
 class CExtensionApp : public CWinApp

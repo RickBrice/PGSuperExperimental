@@ -44,7 +44,7 @@
 static char THIS_FILE[] = __FILE__;
 #endif
 
-CBridgeSightPGSuperScriptingExtensionModule _AtlModule;
+CPGSuperScriptingExtensionModule _AtlModule;
 
 CPyPGSuper& GetApp() 
 { 
