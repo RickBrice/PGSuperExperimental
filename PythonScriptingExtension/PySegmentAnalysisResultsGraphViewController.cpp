@@ -23,7 +23,7 @@ ISegmentAnalysisResultsGraphViewController::GraphMode CPySegmentAnalysisResultsG
    return m_pMyViewController->GetGraphMode();
 }
 
-const CSegmentKey& CPySegmentAnalysisResultsGraphViewController::GetSegment() const
+CSegmentKey CPySegmentAnalysisResultsGraphViewController::GetSegment() const
 {
    return m_pMyViewController->GetSegment();
 }

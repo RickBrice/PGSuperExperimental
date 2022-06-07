@@ -2,7 +2,7 @@
 
 #include "PyViewControllerBase.h"
 #include <EAF\EAFViewController.h>
-#include <Graphing\SegmentAnalysisResultsGraphViewController.h>
+#include <Graphs\SegmentAnalysisResultsGraphViewController.h>
 
 class CPySegmentAnalysisResultsGraphViewController : public CPyViewControllerBase
 {
@@ -12,7 +12,7 @@ public:
    void SetGraphMode(ISegmentAnalysisResultsGraphViewController::GraphMode mode);
    ISegmentAnalysisResultsGraphViewController::GraphMode GetGraphMode() const;
 
-   const CSegmentKey& GetSegment() const;
+   CSegmentKey GetSegment() const;
    void SelectSegment(const CSegmentKey& segment);
 
    std::vector<ActionType> GetActionTypes() const;
