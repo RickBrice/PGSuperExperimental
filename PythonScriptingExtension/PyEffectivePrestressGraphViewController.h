@@ -2,7 +2,7 @@
 
 #include "PyViewControllerBase.h"
 #include <EAF\EAFViewController.h>
-#include <Graphs\EffectivePrestressGraphViewController.h>
+#include <Graphing\EffectivePrestressGraphViewController.h>
 
 #include <boost\python\list.hpp>
 

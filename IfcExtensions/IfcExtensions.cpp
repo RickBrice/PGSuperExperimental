@@ -103,14 +103,14 @@ void RegisterPlugins(bool bRegister)
    // Importer/Exporter Plugins
 
    // PGSuper
-   //WBFL::System::ComCatMgr::RegWithCategory(CLSID_PGSuperProjectImporter, CATID_PGSuperProjectImporter, bRegister);
-   WBFL::System::ComCatMgr::RegWithCategory(CLSID_PGSuperDataImporter,    CATID_PGSuperDataImporter,    bRegister);
-   WBFL::System::ComCatMgr::RegWithCategory(CLSID_PGSuperDataExporter,    CATID_PGSuperDataExporter,    bRegister);
+   //sysComCatMgr::RegWithCategory(CLSID_PGSuperProjectImporter, CATID_PGSuperProjectImporter, bRegister);
+   sysComCatMgr::RegWithCategory(CLSID_PGSuperDataImporter,    CATID_PGSuperDataImporter,    bRegister);
+   sysComCatMgr::RegWithCategory(CLSID_PGSuperDataExporter,    CATID_PGSuperDataExporter,    bRegister);
 
    // PGSplice
-   //WBFL::System::ComCatMgr::RegWithCategory(CLSID_PGSpliceProjectImporter, CATID_PGSpliceProjectImporter, bRegister);
-   WBFL::System::ComCatMgr::RegWithCategory(CLSID_PGSuperDataImporter, CATID_PGSpliceDataImporter, bRegister);
-   WBFL::System::ComCatMgr::RegWithCategory(CLSID_PGSuperDataExporter, CATID_PGSpliceDataExporter, bRegister);
+   //sysComCatMgr::RegWithCategory(CLSID_PGSpliceProjectImporter, CATID_PGSpliceProjectImporter, bRegister);
+   sysComCatMgr::RegWithCategory(CLSID_PGSuperDataImporter, CATID_PGSpliceDataImporter, bRegister);
+   sysComCatMgr::RegWithCategory(CLSID_PGSuperDataExporter, CATID_PGSpliceDataExporter, bRegister);
 }
 
 /////////////////////////////////////////////////////////////////////////////

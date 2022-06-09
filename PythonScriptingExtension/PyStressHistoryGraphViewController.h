@@ -2,7 +2,7 @@
 
 #include "PyViewControllerBase.h"
 #include <EAF\EAFViewController.h>
-#include <Graphs\StressHistoryGraphViewController.h>
+#include <Graphing\StressHistoryGraphViewController.h>
 
 class CPyStressHistoryGraphViewController : public CPyViewControllerBase
 {

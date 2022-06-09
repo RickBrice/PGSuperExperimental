@@ -2,7 +2,7 @@
 
 #include "PyViewControllerBase.h"
 #include <EAF\EAFViewController.h>
-#include <Graphs\ConcretePropertiesGraphViewController.h>
+#include <Graphing\ConcretePropertiesGraphViewController.h>
 
 class CPyConcretePropertiesGraphViewController : public CPyViewControllerBase
 {

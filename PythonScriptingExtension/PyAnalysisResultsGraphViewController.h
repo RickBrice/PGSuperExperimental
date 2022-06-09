@@ -2,7 +2,7 @@
 
 #include "PyViewControllerBase.h"
 #include <EAF\EAFViewController.h>
-#include <Graphs\AnalysisResultsGraphViewController.h>
+#include <Graphing\AnalysisResultsGraphViewController.h>
 
 class CPyAnalysisResultsGraphViewController : public CPyViewControllerBase
 {
